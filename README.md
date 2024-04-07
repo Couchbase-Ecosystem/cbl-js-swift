@@ -18,7 +18,10 @@ pod 'CbliteSwiftJsLib'
 ## Development
 
 To validate that the code works, you can run the pod linter:
+
+```shell
 pod lib lint CbliteSwiftJsLib.podspec --verbose --allow-warnings
+```
 
 ## License
 

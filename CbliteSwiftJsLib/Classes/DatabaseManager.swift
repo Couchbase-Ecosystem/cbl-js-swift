@@ -285,6 +285,7 @@ public class DatabaseManager {
         }
     }
    
+    //TODO add blob support
     
     
 }
