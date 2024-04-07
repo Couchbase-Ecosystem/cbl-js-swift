@@ -15,9 +15,10 @@ it, simply add the following line to your Podfile:
 pod 'CbliteSwiftJsLib'
 ```
 
-## Author
+## Development
 
-Aaron LaBeau, alabeau@gmail.com
+To validate that the code works, you can run the pod linter:
+pod lib lint CbliteSwiftJsLib.podspec --verbose --allow-warnings
 
 ## License
 
