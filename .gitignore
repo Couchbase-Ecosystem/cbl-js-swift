@@ -34,3 +34,11 @@ Carthage/Build
 # `pod install` in .travis.yml
 #
 # Pods/
+Example/Pods/CouchbaseLite-Enterprise
+Example/Pods/CouchbaseLite-Swift-Enterprise
+Example/Pods/Nimble
+Example/Pods/Quick
+Example/Pods/Manifest.lock
+Example/Podfile.lock
+Example/Pods/Local Podspecs
+Example/Pods/Target Support Files
