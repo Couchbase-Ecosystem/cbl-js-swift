@@ -13,7 +13,7 @@ public struct FileSystemHelper {
         let paths = NSSearchPathForDirectoriesInDomains(.applicationSupportDirectory, .userDomainMask, true)
         return paths.first ?? ""
     }
-    
+
     public static func fileGetFileNamesInDirectory(_ directoryPath: String) throws -> [String] {
         let fileManager = FileManager.default
         let files = try fileManager.contentsOfDirectory(atPath: directoryPath)

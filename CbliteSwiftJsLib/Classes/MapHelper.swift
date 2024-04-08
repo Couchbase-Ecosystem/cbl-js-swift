@@ -8,7 +8,7 @@ import Foundation
 import CouchbaseLiteSwift
 
 public struct MapHelper {
-    
+
     public static func documentToMap(_ document: Document) ->
     [String: Any] {
         var docMap = [String: Any]()
@@ -22,8 +22,8 @@ public struct MapHelper {
         }
         return docMap
     }
-    
-    public static func resultToMap(_ result:Result,
+
+    public static func resultToMap(_ result: Result,
                                    databaseName: String) ->
                                    [String: Any] {
         var docMap = result.toDictionary()
@@ -37,7 +37,7 @@ public struct MapHelper {
         }
         return self.resultDictionaryToMap(docMap, databaseName: databaseName)
     }
-    
+
     public static func resultDictionaryToMap(_
                                              dictionary: [String: Any],
                                              databaseName: String) -> [String: Any] {
@@ -54,7 +54,7 @@ public struct MapHelper {
         }
         return docMap
     }
-    
+
     public static func toMap(_ map: [String: Any]) -> [String: Any] {
         var document = [String: Any]()
         for (key, value) in map {
@@ -63,19 +63,19 @@ public struct MapHelper {
                 if let blobData = object["data"] as? [String: Any],
                    let contentType = blobData["contentType"] as? String,
                    let bytes = blobData["data"] as? [NSNumber] {
-                    
+
                     var bytesCArray = [UInt8](repeating: 0, count: bytes.count)
                     for (index, byte) in bytes.enumerated() {
                         bytesCArray[index] = byte.uint8Value
                     }
-                    
+
                     let data = Data(bytesCArray)
                     let blob = Blob(contentType: contentType, data: data)
                     document[key] = blob
                     continue
                 }
             }
-            
+
             document[key] = value
         }
         return document

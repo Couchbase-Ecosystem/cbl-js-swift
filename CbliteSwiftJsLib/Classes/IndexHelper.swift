@@ -2,14 +2,14 @@
 //  IndexHelper.swift
 //  CbliteSwiftJsLib
 //
-//  Created by Aaron LaBeau on 4/7/24.
+//  Created by Aaron LaBeau on 07/04/24.
 //
 
 import Foundation
 import CouchbaseLiteSwift
 
 public struct IndexHelper {
-    
+
     public static func makeValueIndexItems(_ items: [Any]) -> [ValueIndexItem] {
         var valueItems = [ValueIndexItem]()
         for item in items {
@@ -21,7 +21,7 @@ public struct IndexHelper {
         }
         return valueItems
     }
-    
+
     public static func makeFullTextIndexItems(_ items: [Any]) -> [FullTextIndexItem] {
         var fullTextItems = [FullTextIndexItem]()
         for item in items {

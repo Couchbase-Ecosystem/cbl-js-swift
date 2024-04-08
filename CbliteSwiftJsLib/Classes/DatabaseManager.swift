@@ -18,48 +18,48 @@ enum DatabaseError: Error {
 }
 
 public class DatabaseManager {
-    
+
     // MARK: - Private for management of state
     var openDatabases = [String: Database]()
     var queryResultSets = [String: ResultSet]()
-    
+
     /* change listeners */
     var databaseChangeListeners = [String: Any]()
     var documentChangeListeners = [String: Any]()
     var queryChangeListeners = [String: Any]()
-    
+
     /* replicators tracking */
     var replicators = [String: Replicator]()
     var replicatorChangeListeners = [String: Any]()
     var replicatorDocumentListeners = [String: Any]()
-    
+
     var queryCount: Int = 0
     var replicatorCount: Int = 0
     var allResultsChunkSize: Int = 0
-    
+
     /* collections */
-    private var defaultCollectionName:String = "_default"
-    private var defaultScopeName:String = "_default"
-    
+    private var defaultCollectionName: String = "_default"
+    private var defaultScopeName: String = "_default"
+
     // MARK: - Singleton
     static let shared = DatabaseManager()
-    
+
     // MARK: - Private initializer to prevent external instantiation
     private init() {
         // Initialization code here
     }
-    
+
     // MARK: - Helper Functions
-    
+
     public func getDatabase(_ name: String) -> Database? {
         objc_sync_enter(openDatabases)
         defer {
             objc_sync_exit(openDatabases)
         }
-        
+
         return openDatabases[name]
     }
-    
+
     public func buildDatabaseConfig(_ config: [AnyHashable: Any]?) -> DatabaseConfiguration {
         var databaseConfiguration = DatabaseConfiguration()
         if let encKey = config?["encryptionKey"] as? String {
@@ -73,14 +73,14 @@ public class DatabaseManager {
         }
         return databaseConfiguration
     }
-    
+
     // MARK: Database Functions
-    
+
     public func open(_ databaseName: String, databaseConfig: [AnyHashable: Any]?) throws {
         do {
             let config = self.buildDatabaseConfig(databaseConfig)
             let database = try Database(name: databaseName, config: config)
-            
+
             if self.openDatabases[databaseName] != nil {
                 self.openDatabases.removeValue(forKey: databaseName)
             }
@@ -89,7 +89,7 @@ public class DatabaseManager {
             throw DatabaseError.unableToOpenDatabase(databaseName: databaseName)
         }
     }
-    
+
     public func close(_ databaseName: String) throws {
         guard let database = self.getDatabase(databaseName) else {
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -100,7 +100,7 @@ public class DatabaseManager {
             throw DatabaseError.unableToCloseDatabase(databaseName: databaseName)
         }
     }
-    
+
     func delete(_ databaseName: String) throws {
         guard let database = self.getDatabase(databaseName) else {
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -117,18 +117,18 @@ public class DatabaseManager {
             }
         }
     }
-    
+
     public func exists(_ databaseName: String, directoryPath: String) -> Bool {
         return Database.exists(withName: databaseName, inDirectory: directoryPath)
     }
-    
+
     public func getPath(_ databaseName: String) throws -> String? {
         guard let database = self.getDatabase(databaseName) else {
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
         }
         return database.path
     }
-    
+
     public func copy(_ path: String, newName: String, databaseConfig: [AnyHashable: Any]?) throws {
         let config = self.buildDatabaseConfig(databaseConfig)
         do {
@@ -137,29 +137,29 @@ public class DatabaseManager {
             throw DatabaseError.copyError(message: "\(error.localizedDescription)")
         }
     }
-    
+
     // MARK: Database Maintenance Functions
-    
+
     func performMaintenance(_ databaseName: String, maintenanceType: MaintenanceType) throws {
         guard let database = self.getDatabase(databaseName) else {
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
         }
-        
+
         do {
             try database.performMaintenance(type: maintenanceType)
         } catch {
             if let nsError = error as NSError? {
                 let errorMessage: String
                 if let reason = nsError.userInfo[NSLocalizedFailureReasonErrorKey] as? String {
-                    throw DatabaseError.maintenanceError(message:  "Unknown error: \(reason)")
+                    throw DatabaseError.maintenanceError(message: "Unknown error: \(reason)")
                 }
             }
             throw DatabaseError.maintenanceError(message: "Unknown error trying to perform maintenance \(error)")
         }
     }
-    
+
     // MARK: Scope Functions
-    
+
     func scopes(_ databaseName: String) throws -> [Scope]? {
         do {
             guard let database = self.getDatabase(databaseName) else {
@@ -170,7 +170,7 @@ public class DatabaseManager {
             throw DatabaseError.unknownError(message: error.localizedDescription)
         }
     }
-    
+
     func defaultScope(_ databaseName: String) throws -> Scope? {
         do {
             guard let database = self.getDatabase(databaseName) else {
@@ -181,7 +181,7 @@ public class DatabaseManager {
             throw DatabaseError.unknownError(message: error.localizedDescription)
         }
     }
-    
+
     func scope(_ scopeName: String, databaseName: String) throws -> Scope? {
         do {
             guard let database = self.getDatabase(databaseName) else {
@@ -192,9 +192,9 @@ public class DatabaseManager {
             throw DatabaseError.unknownError(message: error.localizedDescription)
         }
     }
-    
+
     // MARK: Collection Functions
-    
+
     func defaultCollection(_ databaseName: String) throws -> Collection? {
         do {
             guard let database = self.getDatabase(databaseName) else {
@@ -205,7 +205,7 @@ public class DatabaseManager {
             throw DatabaseError.unknownError(message: error.localizedDescription)
         }
     }
-        
+
     func collections(_ scopeName: String, databaseName: String) throws -> [Collection] {
         do {
             guard let database = self.getDatabase(databaseName) else {
@@ -216,8 +216,8 @@ public class DatabaseManager {
             throw DatabaseError.unknownError(message: error.localizedDescription)
         }
     }
-    
-    func createCollection(_ collectionName: String, scopeName: String, databaseName:String) throws -> Collection {
+
+    func createCollection(_ collectionName: String, scopeName: String, databaseName: String) throws -> Collection {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -227,7 +227,7 @@ public class DatabaseManager {
             throw DatabaseError.unknownError(message: error.localizedDescription)
         }
     }
-    
+
     func collection(_ collectionName: String, scopeName: String, databaseName: String) throws -> Collection? {
         do {
             guard let database = self.getDatabase(databaseName) else {
@@ -238,7 +238,7 @@ public class DatabaseManager {
             throw DatabaseError.unknownError(message: error.localizedDescription)
         }
     }
-    
+
     func deleteCollection(_ collectionName: String, scopeName: String, databaseName: String) throws {
         do {
             guard let database = self.getDatabase(databaseName) else {
@@ -249,25 +249,24 @@ public class DatabaseManager {
             throw DatabaseError.unknownError(message: error.localizedDescription)
         }
     }
-    
+
     // MARK: Index Functions
-    
+
     func createIndex(_ indexName: String,
                         indexType: String,
                         items: [[Any]],
                         databaseName: String) throws {
         do {
-            try CollectionManager.shared.createIndex(indexName, indexType: indexType, 
-                items: items, 
+            try CollectionManager.shared.createIndex(indexName, indexType: indexType,
+                items: items,
                 collectionName: defaultCollectionName,
                 scopeName: defaultScopeName,
                 databaseName: databaseName)
-        }
-        catch {
+        } catch {
             throw error
         }
     }
-    
+
     func deleteIndex(_ indexName: String,
                         indexType: String,
                         items: [[Any]],
@@ -277,12 +276,11 @@ public class DatabaseManager {
                 collectionName: defaultCollectionName,
                 scopeName: defaultScopeName,
                 databaseName: databaseName)
-        }
-        catch {
+        } catch {
             throw error
         }
     }
-    
+
     func getIndexes(databaseName: String) throws -> [String] {
         do {
             let indexes = try CollectionManager.shared.indexes(
@@ -294,12 +292,12 @@ public class DatabaseManager {
             throw error
         }
     }
-    
+
     // MARK: Document Functions
-   
-    func getDocumentsCount(_ databaseName: String) 
+
+    func getDocumentsCount(_ databaseName: String)
         throws -> UInt64 {
-        
+
             do {
                 return try CollectionManager.shared.documentsCount(
                     defaultCollectionName,
@@ -309,7 +307,7 @@ public class DatabaseManager {
                 throw error
             }
     }
-    
+
     func saveDocument(_ documentId: String,
                       document: [String: Any],
                       concurrencyControl: ConcurrencyControl?,
@@ -322,7 +320,7 @@ public class DatabaseManager {
             throw error
         }
     }
-    
+
     func getDocument(_ documentId: String,
                      databaseName: String) throws -> Document? {
         do {
@@ -331,17 +329,16 @@ public class DatabaseManager {
                 collectionName: defaultCollectionName,
                 scopeName: defaultScopeName,
                 databaseName: databaseName)
-        }
-        catch {
+        } catch {
             throw error
         }
     }
-    
+
     func deleteDocument(_ documentId: String,
                         databaseName: String) throws {
         do {
             try CollectionManager.shared.deleteDocument(
-                documentId, 
+                documentId,
                 collectionName: defaultCollectionName,
                 scopeName: defaultScopeName,
                 databaseName: databaseName)
@@ -349,7 +346,7 @@ public class DatabaseManager {
             throw error
         }
     }
-    
+
     func deleteDocument(_ documentId: String,
                         concurrencyControl: ConcurrencyControl,
                         databaseName: String) throws -> String {
@@ -364,7 +361,7 @@ public class DatabaseManager {
             throw error
         }
     }
-    
+
     func purgeDocument(_ documentId: String,
                        databaseName: String) throws {
         do {
@@ -377,8 +374,8 @@ public class DatabaseManager {
             throw error
         }
     }
-    
-    func getBlobContent(_ key:String, 
+
+    func getBlobContent(_ key: String,
                         documentId: String,
                         databaseName: String) throws -> [Int]? {
         do {
@@ -392,11 +389,11 @@ public class DatabaseManager {
             throw error
         }
     }
-    
+
     // MARK: SQL++ Query Functions
-   
-    func executeQuery(_ query: String, 
-                      parameters: [String:Any]? = nil,
+
+    func executeQuery(_ query: String,
+                      parameters: [String: Any]? = nil,
                       databaseName: String) throws -> String {
         do {
             guard let database = self.getDatabase(databaseName) else {
@@ -415,9 +412,9 @@ public class DatabaseManager {
             throw QueryError.unknownError(message: error.localizedDescription)
         }
     }
-    
-    func queryExplain(_ query: String, 
-                      parameters: [String:Any]? = nil,
+
+    func queryExplain(_ query: String,
+                      parameters: [String: Any]? = nil,
                       databaseName: String) throws -> String {
         do {
             guard let database = self.getDatabase(databaseName) else {
