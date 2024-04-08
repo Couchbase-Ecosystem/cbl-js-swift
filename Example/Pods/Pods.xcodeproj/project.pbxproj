@@ -147,6 +147,7 @@
 		E1CD46EA9261D76FBBBAF9B1335DBD4F /* ReplicatorHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE96D477343F49032312176D9E27B39B /* ReplicatorHelper.swift */; };
 		E2EE2E7797C383576ACBFE4986179459 /* CwlMachBadInstructionHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = BAF5481654285E6C89A09C91548C232A /* CwlMachBadInstructionHandler.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		E45700522BC34C9A00BD8301 /* CollectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45700512BC34C9A00BD8301 /* CollectionManager.swift */; };
+		E45700542BC49E7500BD8301 /* QueryHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45700532BC49E7500BD8301 /* QueryHelper.swift */; };
 		E5ACC239A1C2E515D4939ACECD147445 /* ThrowAssertion.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB84DE68BB48D7526F879A8F80FED744 /* ThrowAssertion.swift */; settings = {COMPILER_FLAGS = "-DPRODUCT_NAME=Nimble/Nimble"; }; };
 		E62F456D7E3734397A48C79381A9009A /* QuickConfiguration.h in Headers */ = {isa = PBXBuildFile; fileRef = 6883893826F15DC95829EE9B90F58888 /* QuickConfiguration.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		E6E71178009EC496792C824BEE308527 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5BE7425DB4BF7B681E080BE00C11DF9 /* Configuration.swift */; };
@@ -354,6 +355,7 @@
 		DE90FD1FE276E9E8DB1D7038E3C31102 /* QuickTestSuite.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = QuickTestSuite.swift; path = Sources/Quick/QuickTestSuite.swift; sourceTree = "<group>"; };
 		E25661047C0B86E2D4396B21769F0BEB /* Behavior.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Behavior.swift; path = Sources/Quick/Behavior.swift; sourceTree = "<group>"; };
 		E45700512BC34C9A00BD8301 /* CollectionManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = CollectionManager.swift; path = CbliteSwiftJsLib/Classes/CollectionManager.swift; sourceTree = "<group>"; };
+		E45700532BC49E7500BD8301 /* QueryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = QueryHelper.swift; path = CbliteSwiftJsLib/Classes/QueryHelper.swift; sourceTree = "<group>"; };
 		E5BE7425DB4BF7B681E080BE00C11DF9 /* Configuration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Configuration.swift; path = Sources/Quick/Configuration/Configuration.swift; sourceTree = "<group>"; };
 		E68BCBBDFCBFF0E1553193D315954574 /* EndWith.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = EndWith.swift; path = Sources/Nimble/Matchers/EndWith.swift; sourceTree = "<group>"; };
 		E6BCE5C78892C796E6A093E5D7E382C2 /* ProcessResults.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProcessResults.swift; path = CbliteSwiftJsLib/Classes/ProcessResults.swift; sourceTree = "<group>"; };
@@ -720,6 +722,7 @@
 				EE96D477343F49032312176D9E27B39B /* ReplicatorHelper.swift */,
 				EA0527B651091114ADFF1855B5492FB2 /* Pod */,
 				3F451D75DB958C0E70BA8E7A3E847159 /* Support Files */,
+				E45700532BC49E7500BD8301 /* QueryHelper.swift */,
 			);
 			name = CbliteSwiftJsLib;
 			path = ../..;
@@ -1107,6 +1110,7 @@
 				6609E469F8F749F27AF6C692CB90BC8C /* ProcessError.swift in Sources */,
 				5483D91F4EC9B2258C2243415A97ED16 /* ProcessResults.swift in Sources */,
 				E1CD46EA9261D76FBBBAF9B1335DBD4F /* ReplicatorHelper.swift in Sources */,
+				E45700542BC49E7500BD8301 /* QueryHelper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

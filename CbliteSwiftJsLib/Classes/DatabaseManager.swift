@@ -14,6 +14,7 @@ enum DatabaseError: Error {
     case databaseLocked(databaseName: String)
     case copyError(message: String)
     case maintenanceError(message: String)
+    case unknownError(message: String)
 }
 
 public class DatabaseManager {
@@ -48,7 +49,7 @@ public class DatabaseManager {
         // Initialization code here
     }
     
-    // MARK: - Helper methods
+    // MARK: - Helper Functions
     
     public func getDatabase(_ name: String) -> Database? {
         objc_sync_enter(openDatabases)
@@ -73,7 +74,7 @@ public class DatabaseManager {
         return databaseConfiguration
     }
     
-    // MARK: Database Methods
+    // MARK: Database Functions
     
     public func open(_ databaseName: String, databaseConfig: [AnyHashable: Any]?) throws {
         do {
@@ -137,7 +138,7 @@ public class DatabaseManager {
         }
     }
     
-    // MARK: Database Maintenance methods
+    // MARK: Database Maintenance Functions
     
     func performMaintenance(_ databaseName: String, maintenanceType: MaintenanceType) throws {
         guard let database = self.getDatabase(databaseName) else {
@@ -157,7 +158,99 @@ public class DatabaseManager {
         }
     }
     
-    // MARK: Index Methods
+    // MARK: Scope Functions
+    
+    func scopes(_ databaseName: String) throws -> [Scope]? {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            return try database.scopes()
+        } catch {
+            throw DatabaseError.unknownError(message: error.localizedDescription)
+        }
+    }
+    
+    func defaultScope(_ databaseName: String) throws -> Scope? {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            return try database.defaultScope()
+        } catch {
+            throw DatabaseError.unknownError(message: error.localizedDescription)
+        }
+    }
+    
+    func scope(_ scopeName: String, databaseName: String) throws -> Scope? {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            return try database.scope(name: scopeName)
+        } catch {
+            throw DatabaseError.unknownError(message: error.localizedDescription)
+        }
+    }
+    
+    // MARK: Collection Functions
+    
+    func defaultCollection(_ databaseName: String) throws -> Collection? {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            return try database.defaultCollection()
+        } catch {
+            throw DatabaseError.unknownError(message: error.localizedDescription)
+        }
+    }
+        
+    func collections(_ scopeName: String, databaseName: String) throws -> [Collection] {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            return try database.collections(scope: scopeName)
+        } catch {
+            throw DatabaseError.unknownError(message: error.localizedDescription)
+        }
+    }
+    
+    func createCollection(_ collectionName: String, scopeName: String, databaseName:String) throws -> Collection {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            return try database.createCollection(name: collectionName, scope: scopeName)
+        } catch {
+            throw DatabaseError.unknownError(message: error.localizedDescription)
+        }
+    }
+    
+    func collection(_ collectionName: String, scopeName: String, databaseName: String) throws -> Collection? {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            return try database.collection(name: collectionName, scope: scopeName)
+        } catch {
+            throw DatabaseError.unknownError(message: error.localizedDescription)
+        }
+    }
+    
+    func deleteCollection(_ collectionName: String, scopeName: String, databaseName: String) throws {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            try database.deleteCollection(name: collectionName, scope: scopeName)
+        } catch {
+            throw DatabaseError.unknownError(message: error.localizedDescription)
+        }
+    }
+    
+    // MARK: Index Functions
     
     func createIndex(_ indexName: String,
                         indexType: String,
@@ -202,7 +295,7 @@ public class DatabaseManager {
         }
     }
     
-    // MARK: Document methods
+    // MARK: Document Functions
    
     func getDocumentsCount(_ databaseName: String) 
         throws -> UInt64 {
@@ -284,8 +377,61 @@ public class DatabaseManager {
             throw error
         }
     }
+    
+    func getBlobContent(_ key:String, 
+                        documentId: String,
+                        databaseName: String) throws -> [Int]? {
+        do {
+            return try CollectionManager.shared.getBlobContent(
+                key,
+                documentId: documentId,
+                collectionName: defaultCollectionName,
+                scopeName: defaultScopeName,
+                databaseName: databaseName)
+        } catch {
+            throw error
+        }
+    }
+    
+    // MARK: SQL++ Query Functions
    
-    //TODO add blob support
+    func executeQuery(_ query: String, 
+                      parameters: [String:Any]? = nil,
+                      databaseName: String) throws -> String {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            let query = try database.createQuery(query)
+            if let params = parameters {
+                let queryParams = try QueryHelper.getParamatersFromJson(params)
+                query.parameters = queryParams
+            }
+            let results = try query.execute()
+            let resultJSONs = results.map { $0.toJSON() }
+            let jsonArray = "[" + resultJSONs.joined(separator: ",") + "]"
+            return jsonArray
+        } catch {
+            throw QueryError.unknownError(message: error.localizedDescription)
+        }
+    }
     
-    
+    func queryExplain(_ query: String, 
+                      parameters: [String:Any]? = nil,
+                      databaseName: String) throws -> String {
+        do {
+            guard let database = self.getDatabase(databaseName) else {
+                throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+            }
+            let query = try database.createQuery(query)
+            if let params = parameters {
+                let queryParams = try QueryHelper.getParamatersFromJson(params)
+                query.parameters = queryParams
+            }
+            let results = try query.explain()
+            return results
+        } catch {
+            throw QueryError.unknownError(message: error.localizedDescription)
+        }
+    }
 }

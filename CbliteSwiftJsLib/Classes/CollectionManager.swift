@@ -37,7 +37,7 @@ public class CollectionManager {
         
     }
     
-    // MARK: - Helper methods
+    // MARK: - Helper Functions
     
     private func getCollectionKey(_ collectionName: String,
                                   scopeName: String,
@@ -73,7 +73,7 @@ public class CollectionManager {
         }
     }
     
-    // MARK: Index Methods
+    // MARK: Index Functions
     
     public func createIndex(_ indexName: String,
                             indexType: String,
@@ -135,13 +135,13 @@ public class CollectionManager {
             collectionName,
             scopeName: scopeName,
             databaseName: databaseName),
-            let indexes = try? collection.indexes() else {
+              let indexes = try? collection.indexes() else {
             throw CollectionError.unableToFindCollection(collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
         }
         return indexes
     }
     
-    // MARK: Document methods
+    // MARK: Document Functions
     
     func documentsCount(_ collectionName: String,
                         scopeName: String,
@@ -204,12 +204,10 @@ public class CollectionManager {
         }
     }
     
-    
-    
     func document(_ documentId: String,
-                      collectionName: String,
-                      scopeName: String,
-                      databaseName: String) throws -> Document? {
+                  collectionName: String,
+                  scopeName: String,
+                  databaseName: String) throws -> Document? {
         
         guard let collection = try self.getCollection(
             collectionName,
@@ -232,10 +230,41 @@ public class CollectionManager {
         }
     }
     
+    func getBlobContent(_ key: String, documentId: String, collectionName: String, scopeName: String, databaseName: String) throws -> [Int]? {
+        guard let collection = try self.getCollection(
+            collectionName,
+            scopeName: scopeName,
+            databaseName: databaseName) else {
+            throw CollectionError.unableToFindCollection(
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName)
+        }
+        
+        guard let document = try collection.document(id: documentId) else {
+            throw CollectionError.documentError(message: "can't find document", collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
+        }
+        
+        guard let blob = document.blob(forKey: key) else {
+            return []
+        }
+        
+        if let data = blob.content {
+            var content: [Int] = []
+            data.regions.forEach { region in
+                for byte in region {
+                    content.append(Int(byte))
+                }
+            }
+            return content
+        }
+        return []
+    }
+    
     func deleteDocument(_ documentId: String,
-                      collectionName: String,
-                      scopeName: String,
-                      databaseName: String) throws {
+                        collectionName: String,
+                        scopeName: String,
+                        databaseName: String) throws {
         
         guard let collection = try self.getCollection(
             collectionName,
@@ -265,10 +294,10 @@ public class CollectionManager {
     }
     
     func deleteDocument(_ documentId: String,
-                      concurrencyControl: ConcurrencyControl,
-                      collectionName: String,
-                      scopeName: String,
-                      databaseName: String) throws -> String {
+                        concurrencyControl: ConcurrencyControl,
+                        collectionName: String,
+                        scopeName: String,
+                        databaseName: String) throws -> String {
         
         guard let collection = try self.getCollection(
             collectionName,
@@ -302,9 +331,9 @@ public class CollectionManager {
     }
     
     func purgeDocument(_ documentId: String,
-                      collectionName: String,
-                      scopeName: String,
-                      databaseName: String) throws {
+                       collectionName: String,
+                       scopeName: String,
+                       databaseName: String) throws {
         
         guard let collection = try self.getCollection(
             collectionName,
@@ -381,6 +410,11 @@ public class CollectionManager {
         }
         
     }
+   
+    // MARK: Replicator Functions
     
+    func replicator(_ replicatorId: String, replicatorConfig: [String: Any], collectionName: String, scopeName: String, databaseName: String) throws {
+        
+    }
     
 }

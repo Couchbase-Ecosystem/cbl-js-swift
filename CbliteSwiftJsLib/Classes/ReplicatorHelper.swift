@@ -8,8 +8,10 @@
 import Foundation
 import CouchbaseLiteSwift
 
+
+
 public struct ReplicatorHelper {
- 
+    
     public static func replicatorConfigFromJson(_ database: Database, data: [String: Any]) -> ReplicatorConfiguration {
         guard let authenticatorData = data["authenticator"] as? [String: Any],
               let target = data["target"] as? [String: Any],
@@ -45,6 +47,15 @@ public struct ReplicatorHelper {
         
         return replConfig
     }
+    
+    
+    
+    private static func replicatorCollectionConfigFromJson(_ data: [String:Any]) -> CollectionConfiguration {
+        let config = CollectionConfiguration()
+        
+        return config
+    }
+    
     
     private static func replicatorAuthenticatorFromConfig(_ config: [String: Any]?) -> Authenticator? {
         guard let type = config?["type"] as? String,
@@ -126,6 +137,6 @@ public struct ReplicatorHelper {
             "documents": docs
         ]
     }
-
-
+    
+    
 }

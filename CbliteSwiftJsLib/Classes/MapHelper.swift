@@ -9,20 +9,23 @@ import CouchbaseLiteSwift
 
 public struct MapHelper {
     
-    public static func documentToMap(_ document: Document) -> [String: Any] {
+    public static func documentToMap(_ document: Document) ->
+    [String: Any] {
         var docMap = [String: Any]()
-            let documentAsMap = document.toDictionary()
-            for (key, value) in documentAsMap {
-                if let blobEntry = value as? Blob {
-                    docMap[key] = blobEntry.properties
-                } else {
-                    docMap[key] = value
-                }
+        let documentAsMap = document.toDictionary()
+        for (key, value) in documentAsMap {
+            if let blobEntry = value as? Blob {
+                docMap[key] = blobEntry.properties
+            } else {
+                docMap[key] = value
             }
+        }
         return docMap
     }
-   
-    public static func resultToMap(_ result:Result, databaseName: String) -> [String: Any] {
+    
+    public static func resultToMap(_ result:Result,
+                                   databaseName: String) ->
+                                   [String: Any] {
         var docMap = result.toDictionary()
         if let idValue = docMap["_id"] {
             docMap["id"] = idValue
@@ -34,8 +37,10 @@ public struct MapHelper {
         }
         return self.resultDictionaryToMap(docMap, databaseName: databaseName)
     }
-   
-    public static func resultDictionaryToMap(_ dictionary: [String: Any], databaseName: String) -> [String: Any] {
+    
+    public static func resultDictionaryToMap(_
+                                             dictionary: [String: Any],
+                                             databaseName: String) -> [String: Any] {
         var docMap = [String: Any]()
         for (key, value) in dictionary {
             let finalKey = key == "*" ? databaseName : key
@@ -53,7 +58,8 @@ public struct MapHelper {
     public static func toMap(_ map: [String: Any]) -> [String: Any] {
         var document = [String: Any]()
         for (key, value) in map {
-            if let object = value as? [String: Any], let type = object["_type"] as? String, type == "blob" {
+            if let object = value as? [String: Any],
+                let type = object["_type"] as? String, type == "blob" {
                 if let blobData = object["data"] as? [String: Any],
                    let contentType = blobData["contentType"] as? String,
                    let bytes = blobData["data"] as? [NSNumber] {
