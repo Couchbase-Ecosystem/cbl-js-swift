@@ -10,17 +10,18 @@ import CouchbaseLiteSwift
 
 public struct ReplicatorHelper {
 
-    public static func replicatorConfigFromJson(_ database: Database, data: [String: Any]) -> ReplicatorConfiguration {
+    public static func replicatorConfigFromJson(_ data: [String: Any]) throws -> ReplicatorConfiguration {
         guard let authenticatorData = data["authenticator"] as? [String: Any],
               let target = data["target"] as? [String: Any],
               let url = target["url"] as? String,
               let replicatorType = data["replicatorType"] as? String,
-              let continuous = data["continuous"] as? Bool else {
-            fatalError("Invalid JSON data")
+              let continuous = data["continuous"] as? Bool,
+              let collectionConfig = data["collectionConfig"] as? [String: Any] else {
+            throw ReplicatorError.fatalError(message: "Invalid JSON data")
         }
 
         let endpoint = URLEndpoint(url: URL(string: url)!)
-        var replConfig = ReplicatorConfiguration(database: database, target: endpoint)
+        var replConfig = ReplicatorConfiguration(target: endpoint)
 
         switch replicatorType {
         case "PUSH_AND_PULL":
@@ -30,11 +31,7 @@ public struct ReplicatorHelper {
         case "PUSH":
             replConfig.replicatorType = .push
         default:
-            fatalError("Invalid replicatorType")
-        }
-
-        if let channels = data["channels"] as? [String] {
-            replConfig.channels = channels
+            throw ReplicatorError.fatalError(message: "Invalid replicatorType")
         }
 
         replConfig.continuous = continuous
@@ -46,10 +43,42 @@ public struct ReplicatorHelper {
         return replConfig
     }
 
-    private static func replicatorCollectionConfigFromJson(_ data: [String: Any]) -> CollectionConfiguration {
-        let config = CollectionConfiguration()
-
-        return config
+    private static func replicatorCollectionConfigFromJson(_ data: [String: Any]) throws -> (Set<Collection>, CollectionConfiguration) {
+        
+        //work on the collections sent in as part of the configuration with an array of collectionName, scopeName, and databaseName
+        guard let collectionData = data["collections"] as? [[String: String]] else {
+            throw ReplicatorError.configurationError(message: "collections doesn't include collections in the proper format")
+        }
+        guard let config = data["config"] as? [String: Any] else {
+            throw ReplicatorError.configurationError(message: "ReplicationConfig collection config is incorrect format")
+        }
+        
+        var collections: Set<Collection> = []
+    
+        for collectionItem in collectionData {
+            guard let collectionName = collectionItem["collectionName"],
+                  let scopeName = collectionItem["scopeName"],
+                  let databaseName = collectionItem["databaseName"] else {
+                // Handle the case where any required key is missing
+                throw ReplicatorError.configurationError(message: "Error: collections missing required key in collection data - collectionName, scopeName, or databaseName")
+            }
+            guard let collection = try CollectionManager.shared.getCollection(collectionName, scopeName: scopeName, databaseName: databaseName) else {
+                throw CollectionError.unableToFindCollection(collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
+            }
+            collections.insert(collection)
+        }
+        //process the config part of the data
+        var collectionConfig = CollectionConfiguration()
+        
+        //get the channels and documentIds to filter for the collections
+        //these are optional
+        if let channels = config["channels"] as? [String] {
+            collectionConfig.channels = channels
+        }
+        if let documentIds = config["documentIds"] as? [String] {
+            collectionConfig.documentIDs = documentIds
+        }
+        return (collections, collectionConfig)
     }
 
     private static func replicatorAuthenticatorFromConfig(_ config: [String: Any]?) -> Authenticator? {

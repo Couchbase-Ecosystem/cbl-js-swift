@@ -6,7 +6,6 @@
 //
 
 import Foundation
-
 import CouchbaseLiteSwift
 
 enum CollectionError: Error {
@@ -39,7 +38,7 @@ public class CollectionManager {
 
     // MARK: - Helper Functions
 
-    private func getCollectionKey(_ collectionName: String,
+    public func getCollectionKey(_ collectionName: String,
                                   scopeName: String,
                                   databaseName: String) -> String {
         return "\(databaseName).\(scopeName).\(collectionName)"
@@ -409,11 +408,4 @@ public class CollectionManager {
         }
 
     }
-
-    // MARK: Replicator Functions
-
-    func replicator(_ replicatorId: String, replicatorConfig: [String: Any], collectionName: String, scopeName: String, databaseName: String) throws {
-
-    }
-
 }

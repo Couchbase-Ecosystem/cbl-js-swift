@@ -25,13 +25,7 @@ public class DatabaseManager {
 
     /* change listeners */
     var databaseChangeListeners = [String: Any]()
-    var documentChangeListeners = [String: Any]()
     var queryChangeListeners = [String: Any]()
-
-    /* replicators tracking */
-    var replicators = [String: Replicator]()
-    var replicatorChangeListeners = [String: Any]()
-    var replicatorDocumentListeners = [String: Any]()
 
     var queryCount: Int = 0
     var replicatorCount: Int = 0
