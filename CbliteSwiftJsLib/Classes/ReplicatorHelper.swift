@@ -39,7 +39,11 @@ public struct ReplicatorHelper {
         if let authenticator = ReplicatorHelper.replicatorAuthenticatorFromConfig(authenticatorData) {
             replConfig.authenticator = authenticator
         }
-
+        
+        //setup collections
+        let (collections, colConfig) = try ReplicatorHelper.replicatorCollectionConfigFromJson(collectionConfig)
+        replConfig.addCollections(Array(collections), config: colConfig)
+        
         return replConfig
     }
 
@@ -134,10 +138,10 @@ public struct ReplicatorHelper {
         }
     }
 
-    public static func generateReplicationJson(_ replication: DocumentReplication) -> [String: Any] {
+    public static func generateReplicationJson(_ replication: [ReplicatedDocument], isPush: Bool) -> [String: Any] {
         var docs = [[String: Any]]()
 
-        for document in replication.documents {
+        for document in replication {
             var flags = [String]()
             if document.flags.contains(.deleted) {
                 flags.append("DELETED")
@@ -157,7 +161,7 @@ public struct ReplicatorHelper {
         }
 
         return [
-            "direction": replication.isPush ? "PUSH" : "PULL",
+            "direction": isPush ? "PUSH" : "PULL",
             "documents": docs
         ]
     }

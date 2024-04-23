@@ -36,7 +36,7 @@ public class DatabaseManager {
     private var defaultScopeName: String = "_default"
 
     // MARK: - Singleton
-    static let shared = DatabaseManager()
+    public static let shared = DatabaseManager()
 
     // MARK: - Private initializer to prevent external instantiation
     private init() {
@@ -95,7 +95,7 @@ public class DatabaseManager {
         }
     }
 
-    func delete(_ databaseName: String) throws {
+    public func delete(_ databaseName: String) throws {
         guard let database = self.getDatabase(databaseName) else {
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
         }
@@ -134,7 +134,7 @@ public class DatabaseManager {
 
     // MARK: Database Maintenance Functions
 
-    func performMaintenance(_ databaseName: String, maintenanceType: MaintenanceType) throws {
+    public func performMaintenance(_ databaseName: String, maintenanceType: MaintenanceType) throws {
         guard let database = self.getDatabase(databaseName) else {
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
         }
@@ -143,7 +143,6 @@ public class DatabaseManager {
             try database.performMaintenance(type: maintenanceType)
         } catch {
             if let nsError = error as NSError? {
-                let errorMessage: String
                 if let reason = nsError.userInfo[NSLocalizedFailureReasonErrorKey] as? String {
                     throw DatabaseError.maintenanceError(message: "Unknown error: \(reason)")
                 }
@@ -154,7 +153,7 @@ public class DatabaseManager {
 
     // MARK: Scope Functions
 
-    func scopes(_ databaseName: String) throws -> [Scope]? {
+    public func scopes(_ databaseName: String) throws -> [Scope]? {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -165,7 +164,7 @@ public class DatabaseManager {
         }
     }
 
-    func defaultScope(_ databaseName: String) throws -> Scope? {
+    public func defaultScope(_ databaseName: String) throws -> Scope? {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -176,7 +175,7 @@ public class DatabaseManager {
         }
     }
 
-    func scope(_ scopeName: String, databaseName: String) throws -> Scope? {
+    public func scope(_ scopeName: String, databaseName: String) throws -> Scope? {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -189,7 +188,7 @@ public class DatabaseManager {
 
     // MARK: Collection Functions
 
-    func defaultCollection(_ databaseName: String) throws -> Collection? {
+    public func defaultCollection(_ databaseName: String) throws -> Collection? {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -200,7 +199,7 @@ public class DatabaseManager {
         }
     }
 
-    func collections(_ scopeName: String, databaseName: String) throws -> [Collection] {
+    public func collections(_ scopeName: String, databaseName: String) throws -> [Collection]? {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -211,7 +210,7 @@ public class DatabaseManager {
         }
     }
 
-    func createCollection(_ collectionName: String, scopeName: String, databaseName: String) throws -> Collection {
+    public func createCollection(_ collectionName: String, scopeName: String, databaseName: String) throws -> Collection? {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -222,7 +221,7 @@ public class DatabaseManager {
         }
     }
 
-    func collection(_ collectionName: String, scopeName: String, databaseName: String) throws -> Collection? {
+    public func collection(_ collectionName: String, scopeName: String, databaseName: String) throws -> Collection? {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -233,7 +232,7 @@ public class DatabaseManager {
         }
     }
 
-    func deleteCollection(_ collectionName: String, scopeName: String, databaseName: String) throws {
+    public func deleteCollection(_ collectionName: String, scopeName: String, databaseName: String) throws {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
@@ -244,149 +243,9 @@ public class DatabaseManager {
         }
     }
 
-    // MARK: Index Functions
-
-    func createIndex(_ indexName: String,
-                        indexType: String,
-                        items: [[Any]],
-                        databaseName: String) throws {
-        do {
-            try CollectionManager.shared.createIndex(indexName, indexType: indexType,
-                items: items,
-                collectionName: defaultCollectionName,
-                scopeName: defaultScopeName,
-                databaseName: databaseName)
-        } catch {
-            throw error
-        }
-    }
-
-    func deleteIndex(_ indexName: String,
-                        indexType: String,
-                        items: [[Any]],
-                        databaseName: String) throws {
-        do {
-            try CollectionManager.shared.deleteIndex(indexName,
-                collectionName: defaultCollectionName,
-                scopeName: defaultScopeName,
-                databaseName: databaseName)
-        } catch {
-            throw error
-        }
-    }
-
-    func getIndexes(databaseName: String) throws -> [String] {
-        do {
-            let indexes = try CollectionManager.shared.indexes(
-                defaultCollectionName,
-                scopeName: defaultScopeName,
-                databaseName: databaseName)
-            return indexes
-        } catch {
-            throw error
-        }
-    }
-
-    // MARK: Document Functions
-
-    func getDocumentsCount(_ databaseName: String)
-        throws -> UInt64 {
-
-            do {
-                return try CollectionManager.shared.documentsCount(
-                    defaultCollectionName,
-                    scopeName: defaultScopeName,
-                    databaseName: databaseName)
-            } catch {
-                throw error
-            }
-    }
-
-    func saveDocument(_ documentId: String,
-                      document: [String: Any],
-                      concurrencyControl: ConcurrencyControl?,
-                      collectionName: String?,
-                      scopeName: String?,
-                      databaseName: String) throws -> String {
-        do {
-            return try CollectionManager.shared.saveDocument(documentId, document: document, concurrencyControl: concurrencyControl, collectionName: defaultCollectionName, scopeName: defaultScopeName, databaseName: databaseName)
-        } catch {
-            throw error
-        }
-    }
-
-    func getDocument(_ documentId: String,
-                     databaseName: String) throws -> Document? {
-        do {
-            return try CollectionManager.shared.document(
-                documentId,
-                collectionName: defaultCollectionName,
-                scopeName: defaultScopeName,
-                databaseName: databaseName)
-        } catch {
-            throw error
-        }
-    }
-
-    func deleteDocument(_ documentId: String,
-                        databaseName: String) throws {
-        do {
-            try CollectionManager.shared.deleteDocument(
-                documentId,
-                collectionName: defaultCollectionName,
-                scopeName: defaultScopeName,
-                databaseName: databaseName)
-        } catch {
-            throw error
-        }
-    }
-
-    func deleteDocument(_ documentId: String,
-                        concurrencyControl: ConcurrencyControl,
-                        databaseName: String) throws -> String {
-        do {
-            return try CollectionManager.shared.deleteDocument(
-                documentId,
-                concurrencyControl: concurrencyControl,
-                collectionName: defaultCollectionName,
-                scopeName: defaultScopeName,
-                databaseName: databaseName)
-        } catch {
-            throw error
-        }
-    }
-
-    func purgeDocument(_ documentId: String,
-                       databaseName: String) throws {
-        do {
-            try CollectionManager.shared.purgeDocument(
-                documentId,
-                collectionName: defaultCollectionName,
-                scopeName: defaultScopeName,
-                databaseName: databaseName)
-        } catch {
-            throw error
-        }
-    }
-
-    func getBlobContent(_ key: String,
-                        documentId: String,
-                        databaseName: String) throws -> [Int]? {
-        do {
-            return try CollectionManager.shared.getBlobContent(
-                key,
-                documentId: documentId,
-                collectionName: defaultCollectionName,
-                scopeName: defaultScopeName,
-                databaseName: databaseName)
-        } catch {
-            throw error
-        }
-    }
-
     // MARK: SQL++ Query Functions
 
-    func executeQuery(_ query: String,
+    public func executeQuery(_ query: String,
                       parameters: [String: Any]? = nil,
                       databaseName: String) throws -> String {
         do {
@@ -407,7 +266,7 @@ public class DatabaseManager {
         }
     }
 
-    func queryExplain(_ query: String,
+    public func queryExplain(_ query: String,
                       parameters: [String: Any]? = nil,
                       databaseName: String) throws -> String {
         do {

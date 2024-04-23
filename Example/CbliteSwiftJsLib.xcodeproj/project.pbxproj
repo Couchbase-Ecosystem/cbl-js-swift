@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		47F9B120E1C23B16B4C81984 /* Pods_CbliteSwiftJsLib_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3DA50C9955F43EE9F0B5800C /* Pods_CbliteSwiftJsLib_Tests.framework */; };
-		607FACEC1AFB9204008FA782 /* Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* Tests.swift */; };
+		E457005B2BC5E9C400BD8301 /* Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E457005A2BC5E9C400BD8301 /* Tests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -16,11 +16,12 @@
 		3DA50C9955F43EE9F0B5800C /* Pods_CbliteSwiftJsLib_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CbliteSwiftJsLib_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		607FACE51AFB9204008FA782 /* CbliteSwiftJsLib_Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CbliteSwiftJsLib_Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		607FACEA1AFB9204008FA782 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		607FACEB1AFB9204008FA782 /* Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests.swift; sourceTree = "<group>"; };
 		72E02199817F034EA485E445 /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = LICENSE; path = ../LICENSE; sourceTree = "<group>"; };
 		73B09FF85B127619509F50AE /* Pods-CbliteSwiftJsLib_Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CbliteSwiftJsLib_Tests.debug.xcconfig"; path = "Target Support Files/Pods-CbliteSwiftJsLib_Tests/Pods-CbliteSwiftJsLib_Tests.debug.xcconfig"; sourceTree = "<group>"; };
 		9B8F9603733E94A5A6F4266C /* CbliteSwiftJsLib.podspec */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = CbliteSwiftJsLib.podspec; path = ../CbliteSwiftJsLib.podspec; sourceTree = "<group>"; };
 		DD1E1B098EE32852869F75FD /* Pods-CbliteSwiftJsLib_Tests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CbliteSwiftJsLib_Tests.release.xcconfig"; path = "Target Support Files/Pods-CbliteSwiftJsLib_Tests/Pods-CbliteSwiftJsLib_Tests.release.xcconfig"; sourceTree = "<group>"; };
+		E45700592BC5E9C400BD8301 /* CbliteSwiftJsLib_Tests-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CbliteSwiftJsLib_Tests-Bridging-Header.h"; sourceTree = "<group>"; };
+		E457005A2BC5E9C400BD8301 /* Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,8 +67,9 @@
 		607FACE81AFB9204008FA782 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
-				607FACEB1AFB9204008FA782 /* Tests.swift */,
 				607FACE91AFB9204008FA782 /* Supporting Files */,
+				E457005A2BC5E9C400BD8301 /* Tests.swift */,
+				E45700592BC5E9C400BD8301 /* CbliteSwiftJsLib_Tests-Bridging-Header.h */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -133,7 +135,7 @@
 				TargetAttributes = {
 					607FACE41AFB9204008FA782 = {
 						CreatedOnToolsVersion = 6.3.1;
-						LastSwiftMigration = "";
+						LastSwiftMigration = 1530;
 						TestTargetID = 607FACCF1AFB9204008FA782;
 					};
 				};
@@ -197,17 +199,11 @@
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-CbliteSwiftJsLib_Tests/Pods-CbliteSwiftJsLib_Tests-frameworks.sh",
 				"${BUILT_PRODUCTS_DIR}/CbliteSwiftJsLib/CbliteSwiftJsLib.framework",
-				"${BUILT_PRODUCTS_DIR}/Nimble/Nimble.framework",
-				"${BUILT_PRODUCTS_DIR}/Quick/Quick.framework",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/CouchbaseLite-Enterprise/CouchbaseLite.framework/CouchbaseLite",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/CouchbaseLite-Swift-Enterprise/CouchbaseLiteSwift.framework/CouchbaseLiteSwift",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CbliteSwiftJsLib.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Nimble.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Quick.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CouchbaseLite.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CouchbaseLiteSwift.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -222,7 +218,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				607FACEC1AFB9204008FA782 /* Tests.swift in Sources */,
+				E457005B2BC5E9C400BD8301 /* Tests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -335,6 +331,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 73B09FF85B127619509F50AE /* Pods-CbliteSwiftJsLib_Tests.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PLATFORM_DIR)/Developer/Library/Frameworks",
 					"$(inherited)",
@@ -354,6 +351,8 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Tests/CbliteSwiftJsLib_Tests-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -365,6 +364,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DD1E1B098EE32852869F75FD /* Pods-CbliteSwiftJsLib_Tests.release.xcconfig */;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PLATFORM_DIR)/Developer/Library/Frameworks",
 					"$(inherited)",
@@ -380,6 +380,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Tests/CbliteSwiftJsLib_Tests-Bridging-Header.h";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;

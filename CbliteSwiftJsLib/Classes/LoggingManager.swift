@@ -17,14 +17,14 @@ enum LoggingError: Error {
 public class LoggingManager {
 
     // MARK: - Singleton
-    static let shared = LoggingManager()
+    public static let shared = LoggingManager()
 
     // MARK: - Private initializer to prevent external instatiation
     private init() {
 
     }
 
-    public func setLogLevel(_ logDomain: String, logLevel: NSNumber) throws {
+    public func setLogLevel(_ logDomain: String, logLevel: Int) throws {
         switch logDomain {
             case "ALL": Database.log.console.domains = .all
             case "DATABASE": Database.log.console.domains = .database
@@ -34,7 +34,7 @@ public class LoggingManager {
             default:
                 throw LoggingError.invalidDomain(message: "Invalid domain value \(logDomain)")
         }
-        if let logLevelValue = LogLevel(rawValue: UInt8(truncating: logLevel)) {
+        if let logLevelValue = LogLevel(rawValue: UInt8(logLevel)) {
             Database.log.console.level = logLevelValue
         } else {
             throw LoggingError.invalidLogLevel(message: "Invalid level value \(logLevel)")
@@ -43,9 +43,11 @@ public class LoggingManager {
 
     public func setFileLogging(_ databaseName: String,
                                config: [String: Any]) throws {
+        /*
         guard let database = DatabaseManager.shared.getDatabase(databaseName) else {
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
         }
+        */
         guard let logLevel = config["level"] as? Int,
               let directory = config["directory"] as? String,
               !directory.isEmpty else {

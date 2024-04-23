@@ -31,9 +31,5 @@ Pod::Spec.new do |s|
   s.swift_version = '5.5'
 
   s.source_files = 'CbliteSwiftJsLib/Classes/**/*'
-
-  # s.public_header_files = 'Pod/Classes/**/*.h'
-
   s.dependency 'CouchbaseLite-Swift-Enterprise', '~> 3.1'
-  s.dependency 'CouchbaseLite-Enterprise', '~> 3.1'
 end

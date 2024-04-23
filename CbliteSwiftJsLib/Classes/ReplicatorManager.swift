@@ -24,7 +24,7 @@ public class ReplicatorManager {
     var replicatorDocumentListeners = [String: Any]()
 
     // MARK: - Singleton
-    static let shared = ReplicatorManager()
+    public static let shared = ReplicatorManager()
 
     // MARK: - Private initializer to prevent external instatiation
     private init() { }
@@ -33,10 +33,14 @@ public class ReplicatorManager {
     public func getReplicator(replicatorId: String) -> Replicator? {
         return self.replicators[replicatorId]
     }
+    
+    public func removeReplicator(replicatorId: String) {
+        self.replicators.removeValue(forKey: replicatorId)
+    }
 
     // MARK: Replicator Functions
 
-    func replicator(replicatorConfig: [String: Any]) throws -> String {
+    public func replicator(_ replicatorConfig: [String: Any]) throws -> String {
         do {
             let id = UUID().uuidString
             let config = try ReplicatorHelper.replicatorConfigFromJson(replicatorConfig)
@@ -48,7 +52,7 @@ public class ReplicatorManager {
         }
     }
 
-    func start(replicatorId: String) throws {
+    public func start(_ replicatorId: String) throws {
         if let replicator = getReplicator(replicatorId: replicatorId) {
             replicator.start()
         } else {
@@ -56,7 +60,7 @@ public class ReplicatorManager {
         }
     }
 
-    func stop(replicatorId: String) throws {
+    public func stop(_ replicatorId: String) throws {
         if let replicator = getReplicator(replicatorId: replicatorId) {
             replicator.stop()
         } else {
@@ -64,7 +68,7 @@ public class ReplicatorManager {
         }
     }
 
-    func resetCheckpoint(replicatorId: String) throws {
+    public func resetCheckpoint(_ replicatorId: String) throws {
         if let replicator = getReplicator(replicatorId: replicatorId) {
             let status = replicator.status
             let activity = status.activity
@@ -78,7 +82,7 @@ public class ReplicatorManager {
         }
     }
 
-    func getStatus(replicatorId: String) throws -> [String: Any] {
+    public func getStatus(_ replicatorId: String) throws -> [String: Any] {
         if let replicator = getReplicator(replicatorId: replicatorId) {
             let status = replicator.status
             let statusJson = ReplicatorHelper.generateReplicatorStatusJson(status)
@@ -88,7 +92,7 @@ public class ReplicatorManager {
         }
     }
 
-    func cleanUp(replicatorId: String) throws {
+    public func cleanUp(_ replicatorId: String) throws {
         if let replicator = getReplicator(replicatorId: replicatorId) {
             replicator.stop()
             self.replicators.removeValue(forKey: replicatorId)
@@ -97,7 +101,7 @@ public class ReplicatorManager {
         }
     }
     
-    func pendingDocIds(_ replicatorId: String, collectionName: String, scopeName: String, databaseName: String) throws -> Set<String> {
+    public func pendingDocIds(_ replicatorId: String, collectionName: String, scopeName: String, databaseName: String) throws -> Set<String> {
         guard let collection = try CollectionManager.shared.getCollection(collectionName, scopeName: scopeName, databaseName: databaseName) else {
             throw CollectionError.unableToFindCollection(collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
         }
@@ -112,7 +116,7 @@ public class ReplicatorManager {
         }
     }
     
-    func isDocumentPending(_ documentId: String, replicatorId: String, collectionName: String, scopeName: String, databaseName: String) throws -> Bool {
+    public func isDocumentPending(_ documentId: String, replicatorId: String, collectionName: String, scopeName: String, databaseName: String) throws -> Bool {
         guard let collection = try CollectionManager.shared.getCollection(collectionName, scopeName: scopeName, databaseName: databaseName) else {
             throw CollectionError.unableToFindCollection(collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
         }

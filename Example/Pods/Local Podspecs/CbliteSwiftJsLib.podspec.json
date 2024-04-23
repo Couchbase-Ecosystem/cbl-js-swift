@@ -22,9 +22,6 @@
   "dependencies": {
     "CouchbaseLite-Swift-Enterprise": [
       "~> 3.1"
-    ],
-    "CouchbaseLite-Enterprise": [
-      "~> 3.1"
     ]
   },
   "swift_version": "5.5"

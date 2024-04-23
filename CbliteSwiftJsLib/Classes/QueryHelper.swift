@@ -17,7 +17,7 @@ public struct QueryHelper {
 
     public static func getParamatersFromJson(_ data: [String: Any])
        throws -> Parameters? {
-        var parameters = Parameters()
+        let parameters = Parameters()
         for (key, value) in data {
             // Ensure the value is a dictionary
             guard let innerDictionary = value as? [String: Any] else {

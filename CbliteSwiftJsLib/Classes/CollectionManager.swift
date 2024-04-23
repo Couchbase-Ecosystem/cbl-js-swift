@@ -29,7 +29,7 @@ public class CollectionManager {
     var documentChangeListeners = [String: Any]()
 
     // MARK: - Singleton
-    static let shared = CollectionManager()
+    public static let shared = CollectionManager()
 
     // MARK: - Private initializer to prevent external instatiation
     private init() {
@@ -105,7 +105,7 @@ public class CollectionManager {
         }
     }
 
-    func deleteIndex(_ indexName: String,
+    public func deleteIndex(_ indexName: String,
                      collectionName: String,
                      scopeName: String,
                      databaseName: String) throws {
@@ -126,7 +126,7 @@ public class CollectionManager {
         }
     }
 
-    func indexes(_ collectionName: String,
+    public func indexes(_ collectionName: String,
                  scopeName: String,
                  databaseName: String) throws -> [String] {
 
@@ -142,7 +142,7 @@ public class CollectionManager {
 
     // MARK: Document Functions
 
-    func documentsCount(_ collectionName: String,
+    public func documentsCount(_ collectionName: String,
                         scopeName: String,
                         databaseName: String) throws -> UInt64 {
 
@@ -158,12 +158,12 @@ public class CollectionManager {
         return collection.count
     }
 
-    func saveDocument(_ documentId: String,
+    public func saveDocument(_ documentId: String,
                       document: [String: Any],
                       concurrencyControl: ConcurrencyControl?,
                       collectionName: String,
                       scopeName: String,
-                      databaseName: String) throws -> String {
+                      databaseName: String) throws -> (String, Bool?) {
 
         guard let collection = try self.getCollection(
             collectionName,
@@ -186,12 +186,12 @@ public class CollectionManager {
             if let concurrencyControlValue = concurrencyControl {
                 let results = try collection.save(document: mutableDocument, concurrencyControl: concurrencyControlValue)
                 if results {
-                    return "true"
+                    return (mutableDocument.id, true)
                 }
-                return "false"
+                return (mutableDocument.id, false)
             } else {
                 try collection.save(document: mutableDocument)
-                return documentId
+                return (documentId, nil)
             }
         } catch {
             throw CollectionError.documentError(
@@ -202,7 +202,7 @@ public class CollectionManager {
         }
     }
 
-    func document(_ documentId: String,
+    public func document(_ documentId: String,
                   collectionName: String,
                   scopeName: String,
                   databaseName: String) throws -> Document? {
@@ -228,7 +228,11 @@ public class CollectionManager {
         }
     }
 
-    func getBlobContent(_ key: String, documentId: String, collectionName: String, scopeName: String, databaseName: String) throws -> [Int]? {
+    public func getBlobContent(_ key: String, 
+            documentId: String,
+            collectionName: String,
+            scopeName: String,
+            databaseName: String) throws -> [Int]? {
         guard let collection = try self.getCollection(
             collectionName,
             scopeName: scopeName,
@@ -259,7 +263,7 @@ public class CollectionManager {
         return []
     }
 
-    func deleteDocument(_ documentId: String,
+    public func deleteDocument(_ documentId: String,
                         collectionName: String,
                         scopeName: String,
                         databaseName: String) throws {
@@ -291,8 +295,8 @@ public class CollectionManager {
         }
     }
 
-    func deleteDocument(_ documentId: String,
-                        concurrencyControl: ConcurrencyControl,
+    public func deleteDocument(_ documentId: String,
+                        concurrencyControl: ConcurrencyControl?,
                         collectionName: String,
                         scopeName: String,
                         databaseName: String) throws -> String {
@@ -314,11 +318,17 @@ public class CollectionManager {
                     scopeName: scopeName,
                     databaseName: databaseName)
             }
-            let result = try collection.delete(document: document, concurrencyControl: concurrencyControl)
-            if result {
-                return "true"
+            if let cc = concurrencyControl {
+                let result = try collection.delete(document: document, concurrencyControl: cc)
+                if result {
+                    return "true"
+                }
+                return "false"
+            } else {
+                try collection.delete(document: document)
+                return ""
             }
-            return "false"
+
         } catch {
             throw CollectionError.documentError(
                 message: error.localizedDescription,
@@ -328,7 +338,7 @@ public class CollectionManager {
         }
     }
 
-    func purgeDocument(_ documentId: String,
+    public func purgeDocument(_ documentId: String,
                        collectionName: String,
                        scopeName: String,
                        databaseName: String) throws {
@@ -353,7 +363,7 @@ public class CollectionManager {
         }
     }
 
-    func setDocumentExpiration(_ documentId: String,
+    public func setDocumentExpiration(_ documentId: String,
                                expiration: Date?,
                                collectionName: String,
                                scopeName: String,
@@ -382,7 +392,7 @@ public class CollectionManager {
 
     }
 
-    func getDocumentExpiration(_ documentId: String,
+    public func getDocumentExpiration(_ documentId: String,
                                collectionName: String,
                                scopeName: String,
                                databaseName: String) throws -> Date? {
