@@ -20,12 +20,12 @@ Pod::Spec.new do |s|
   Couchbase Lite Swift libary for cblite.js (Javascript) Library.  This is a set of shared code used by the Ionic and React Native plugins for Couchbase Lite.
                        DESC
 
-  s.homepage         = 'https://github.com/couchbaselabs/CbliteSwiftJsLib'
+  s.homepage         = 'https://github.com/Couchbase-Ecosystem/cbl-js-swift'
   # s.screenshots     = 'www.example.com/screenshots_1', 'www.example.com/screenshots_2'
   s.license          = { :type => 'Apache License, Version 2.0', :file => 'LICENSE' }
   s.author           = 'Couchbase'
   s.source           = { :git => 'https://github.com/couchbaselabs/CbliteSwiftJsLib.git', :tag => s.version.to_s }
-  s.social_media_url = 'https://twitter.com/couchbase'
+  s.social_media_url = ''
 
   s.ios.deployment_target = '13.0'
   s.swift_version = '5.5'
