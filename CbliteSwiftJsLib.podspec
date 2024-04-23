@@ -25,7 +25,6 @@ Pod::Spec.new do |s|
   s.license          = { :type => 'Apache License, Version 2.0', :file => 'LICENSE' }
   s.author           = 'Couchbase'
   s.source           = { :git => 'https://github.com/Couchbase-Ecosystem/cbl-js-swift.git', :tag => s.version.to_s }
-  s.social_media_url = ''
 
   s.ios.deployment_target = '13.0'
   s.swift_version = '5.5'
