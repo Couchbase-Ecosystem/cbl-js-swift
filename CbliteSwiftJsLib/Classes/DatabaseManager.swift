@@ -262,7 +262,7 @@ public class DatabaseManager {
             let jsonArray = "[" + resultJSONs.joined(separator: ",") + "]"
             return jsonArray
         } catch {
-            throw QueryError.unknownError(message: error.localizedDescription)
+            throw error
         }
     }
 
