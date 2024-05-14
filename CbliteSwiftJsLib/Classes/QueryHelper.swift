@@ -47,17 +47,23 @@ public struct QueryHelper {
                         parameters.setDouble(doubleValue, forName: key)
                     }
                 case "date":
-                    if let dateValue = value as? Date {
-                        parameters.setDate(dateValue, forName: key)
+                    if let dateValue = value as? String {
+                        //convert the date
+                        let dateFormatter = ISO8601DateFormatter()
+                        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                        let date = dateFormatter.date(from: dateValue)
+                        parameters.setDate(date, forName: key)
                     }
                 case "int":
                     if let intValue = value as? Int {
                         parameters.setInt(intValue, forName: key)
                     }
-                case "int64":
+                case "long":
                     if let int64Value = value as? Int64 {
                         parameters.setInt64(int64Value, forName: key)
                     }
+                case "value":
+                        parameters.setValue(value, forName: key)
                 default:
                     throw QueryError.invalidParameter(message: type)
                 }

@@ -245,14 +245,14 @@ public class DatabaseManager {
 
     // MARK: SQL++ Query Functions
 
-    public func executeQuery(_ query: String,
+    public func executeQuery(_ queryString: String,
                       parameters: [String: Any]? = nil,
                       databaseName: String) throws -> String {
         do {
             guard let database = self.getDatabase(databaseName) else {
                 throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
             }
-            let query = try database.createQuery(query)
+            let query = try database.createQuery(queryString)
             if let params = parameters {
                 let queryParams = try QueryHelper.getParamatersFromJson(params)
                 query.parameters = queryParams
