@@ -6,111 +6,106 @@
 //
 
 import Foundation
+import JavaScriptCore
 import CouchbaseLiteSwift
 
 public struct ReplicatorHelper {
-
-    public static func replicatorConfigFromJson(_ data: [String: Any]) throws -> ReplicatorConfiguration {
-        guard let authenticatorData = data["authenticator"] as? [String: Any],
-              let target = data["target"] as? [String: Any],
+    
+    public static func replicatorConfigFromJson(_ data: [String: Any], collectionConfiguration: [CollectionConfigItem]) throws -> ReplicatorConfiguration {
+        guard let target = data["target"] as? [String: Any],
               let url = target["url"] as? String,
               let replicatorType = data["replicatorType"] as? String,
-              let continuous = data["continuous"] as? Bool,
-              let collectionConfig = data["collectionConfig"] as? [String: Any] else {
+              let continuous = data["continuous"] as? Bool else {
             throw ReplicatorError.fatalError(message: "Invalid JSON data")
         }
-
+        
         let endpoint = URLEndpoint(url: URL(string: url)!)
         var replConfig = ReplicatorConfiguration(target: endpoint)
-
-        switch replicatorType {
-        case "PUSH_AND_PULL":
-            replConfig.replicatorType = .pushAndPull
-        case "PULL":
-            replConfig.replicatorType = .pull
-        case "PUSH":
-            replConfig.replicatorType = .push
-        default:
-            throw ReplicatorError.fatalError(message: "Invalid replicatorType")
-        }
-
-        replConfig.continuous = continuous
-
-        if let authenticator = ReplicatorHelper.replicatorAuthenticatorFromConfig(authenticatorData) {
-            replConfig.authenticator = authenticator
+        
+        if let authenticatorData = data["authenticator"], !(authenticatorData is String && authenticatorData as! String == "")  {
+            if let authenticatorConfig = authenticatorData as? [String: Any] {
+                if let authenticator = ReplicatorHelper.replicatorAuthenticatorFromConfig(authenticatorConfig) {
+                    replConfig.authenticator = authenticator
+                }
+            }
+            
         }
         
-        //setup collections
-        let (collections, colConfig) = try ReplicatorHelper.replicatorCollectionConfigFromJson(collectionConfig)
-        replConfig.addCollections(Array(collections), config: colConfig)
+       try  ReplicatorHelper.replicatorCollectionConfigFromJson(collectionConfiguration, replicationConfig:  &replConfig)
+        
+        switch replicatorType {
+            case "PUSH_AND_PULL":
+                replConfig.replicatorType = .pushAndPull
+            case "PULL":
+                replConfig.replicatorType = .pull
+            case "PUSH":
+                replConfig.replicatorType = .push
+            default:
+                throw ReplicatorError.fatalError(message: "Invalid replicatorType")
+        }
+        
+        replConfig.continuous = continuous
+        
         
         return replConfig
     }
-
-    private static func replicatorCollectionConfigFromJson(_ data: [String: Any]) throws -> (Set<Collection>, CollectionConfiguration) {
+    
+    public static func replicatorCollectionConfigFromJson(_ data:  [CollectionConfigItem], replicationConfig: inout ReplicatorConfiguration) throws {
         
         //work on the collections sent in as part of the configuration with an array of collectionName, scopeName, and databaseName
-        guard let collectionData = data["collections"] as? [[String: String]] else {
-            throw ReplicatorError.configurationError(message: "collections doesn't include collections in the proper format")
-        }
-        guard let config = data["config"] as? [String: Any] else {
-            throw ReplicatorError.configurationError(message: "ReplicationConfig collection config is incorrect format")
-        }
-        
-        var collections: Set<Collection> = []
-    
-        for collectionItem in collectionData {
-            guard let collectionName = collectionItem["collectionName"],
-                  let scopeName = collectionItem["scopeName"],
-                  let databaseName = collectionItem["databaseName"] else {
-                // Handle the case where any required key is missing
-                throw ReplicatorError.configurationError(message: "Error: collections missing required key in collection data - collectionName, scopeName, or databaseName")
+        for item in data {
+            
+            var collections: [Collection] = []
+            
+            for col in item.collections {
+                
+                guard let collection = try CollectionManager.shared.getCollection(col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName) else {
+                    throw CollectionError.unableToFindCollection(collectionName: col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName)
+                }
+                collections.append(collection)
             }
-            guard let collection = try CollectionManager.shared.getCollection(collectionName, scopeName: scopeName, databaseName: databaseName) else {
-                throw CollectionError.unableToFindCollection(collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
+            
+            //process the config part of the data
+            var collectionConfig = CollectionConfiguration()
+            
+            //get the channels and documentIds to filter for the collections
+            //these are optional
+            if item.config.channels.count > 0 {
+                collectionConfig.channels =  item.config.channels
             }
-            collections.insert(collection)
+            if item.config.documentIds.count > 0 {
+                collectionConfig.documentIDs = item.config.documentIds
+            }
+            replicationConfig.addCollections(collections, config: collectionConfig)
         }
-        //process the config part of the data
-        var collectionConfig = CollectionConfiguration()
-        
-        //get the channels and documentIds to filter for the collections
-        //these are optional
-        if let channels = config["channels"] as? [String] {
-            collectionConfig.channels = channels
-        }
-        if let documentIds = config["documentIds"] as? [String] {
-            collectionConfig.documentIDs = documentIds
-        }
-        return (collections, collectionConfig)
     }
-
+    
     private static func replicatorAuthenticatorFromConfig(_ config: [String: Any]?) -> Authenticator? {
         guard let type = config?["type"] as? String,
               let data = config?["data"] as? [String: Any] else {
             return nil
         }
-
+        
         switch type {
-        case "session":
-            guard let sessionID = data["sessionID"] as? String,
-                  let cookieName = data["cookieName"] as? String else {
+            case "session":
+                guard let sessionID = data["sessionID"] as? String,
+                      let cookieName = data["cookieName"] as? String else {
+                    return nil
+                }
+                return SessionAuthenticator(sessionID: sessionID, cookieName: cookieName)
+                
+            case "basic":
+                guard let username = data["username"] as? String,
+                      let password = data["password"] as? String else {
+                    return nil
+                }
+                return BasicAuthenticator(username: username, password: password)
+                
+            default:
                 return nil
-            }
-            return SessionAuthenticator(sessionID: sessionID, cookieName: cookieName)
-
-        case "basic":
-            guard let username = data["username"] as? String,
-                  let password = data["password"] as? String else {
-                return nil
-            }
-            return BasicAuthenticator(username: username, password: password)
-
-        default:
-            return nil
         }
     }
-
+    
     public static func generateReplicatorStatusJson(_ status: Replicator.Status) -> [String: Any] {
         var errorJson: [String: Any]?
         if let error = status.error {
@@ -118,12 +113,12 @@ public struct ReplicatorHelper {
                 "message": error.localizedDescription
             ]
         }
-
+        
         let progressJson: [String: Any] = [
             "completed": status.progress.completed,
             "total": status.progress.total
         ]
-
+        
         if let errorJson = errorJson {
             return [
                 "activityLevel": status.activity.rawValue,
@@ -137,10 +132,10 @@ public struct ReplicatorHelper {
             ]
         }
     }
-
+    
     public static func generateReplicationJson(_ replication: [ReplicatedDocument], isPush: Bool) -> [String: Any] {
         var docs = [[String: Any]]()
-
+        
         for document in replication {
             var flags = [String]()
             if document.flags.contains(.deleted) {
@@ -150,20 +145,20 @@ public struct ReplicatorHelper {
                 flags.append("ACCESS_REMOVED")
             }
             var documentDictionary: [String: Any] = ["id": document.id, "flags": flags]
-
+            
             if let error = document.error {
                 documentDictionary["error"] = [
                     "message": error.localizedDescription
                 ]
             }
-
+            
             docs.append(documentDictionary)
         }
-
+        
         return [
             "direction": isPush ? "PUSH" : "PULL",
             "documents": docs
         ]
     }
-
+    
 }
