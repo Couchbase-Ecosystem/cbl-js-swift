@@ -144,7 +144,7 @@ public struct ReplicatorHelper {
             if document.flags.contains(.accessRemoved) {
                 flags.append("ACCESS_REMOVED")
             }
-            var documentDictionary: [String: Any] = ["id": document.id, "flags": flags]
+            var documentDictionary: [String: Any] = ["id": document.id, "flags": flags, "scopeName": document.scope, "collectionName": document.collection]
             
             if let error = document.error {
                 documentDictionary["error"] = [
@@ -156,7 +156,7 @@ public struct ReplicatorHelper {
         }
         
         return [
-            "direction": isPush ? "PUSH" : "PULL",
+            "isPush": isPush ? true : false,
             "documents": docs
         ]
     }

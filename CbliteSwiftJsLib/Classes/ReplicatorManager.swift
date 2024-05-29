@@ -87,6 +87,19 @@ public class ReplicatorManager {
             throw ReplicatorError.unableToFindReplicator(replicatorId: replicatorId)
         }
     }
+    
+    public func getPendingDocumentIds(_ replicatorId: String, collection: Collection) throws ->  [String:Any] {
+        if let replicator = getReplicator(replicatorId: replicatorId) {
+            do {
+                let documentIds = try replicator.pendingDocumentIds(collection: collection)
+                return ["documentIds": documentIds];
+            } catch {
+                throw error
+            }
+        } else {
+            throw ReplicatorError.unableToFindReplicator(replicatorId: replicatorId)
+        }
+    }
 
     public func cleanUp(_ replicatorId: String) throws {
         if let replicator = getReplicator(replicatorId: replicatorId) {
