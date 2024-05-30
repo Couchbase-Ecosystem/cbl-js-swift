@@ -8,7 +8,27 @@
 import Foundation
 import CouchbaseLiteSwift
 
-enum CollectionError: Error {
+public struct CollectionConfigItem: Codable {
+    let collections: [CollectionDtoWrapper]
+    let config: ConfigDto
+}
+
+public struct CollectionDtoWrapper: Codable {
+    let collection: CollectionDto
+}
+
+public struct CollectionDto: Codable {
+    let name: String
+    let scopeName: String
+    let databaseName: String
+}
+
+public struct ConfigDto: Codable {
+    let channels: [String]
+    let documentIds: [String]
+}
+
+public enum CollectionError: Error {
     case unableToFindCollection(collectionName: String, scopeName: String, databaseName: String)
     case getCollection(message: String, collectionName: String, scopeName: String, databaseName: String)
     case cannotCreateIndex(indexName: String)

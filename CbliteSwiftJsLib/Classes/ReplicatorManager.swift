@@ -40,16 +40,13 @@ public class ReplicatorManager {
 
     // MARK: Replicator Functions
 
-    public func replicator(_ replicatorConfig: [String: Any]) throws -> String {
-        do {
+    public func replicator(_ replicatorConfig: [String: Any], collectionConfiguration: [CollectionConfigItem]) throws -> String {
             let id = UUID().uuidString
-            let config = try ReplicatorHelper.replicatorConfigFromJson(replicatorConfig)
+            let config = try ReplicatorHelper.replicatorConfigFromJson(replicatorConfig, collectionConfiguration: collectionConfiguration)
+        
             let replicator = Replicator(config: config)
             replicators[id] = replicator
             return id
-        } catch {
-            throw ReplicatorError.fatalError(message: error.localizedDescription)
-        }
     }
 
     public func start(_ replicatorId: String) throws {
@@ -87,6 +84,19 @@ public class ReplicatorManager {
             let status = replicator.status
             let statusJson = ReplicatorHelper.generateReplicatorStatusJson(status)
             return statusJson
+        } else {
+            throw ReplicatorError.unableToFindReplicator(replicatorId: replicatorId)
+        }
+    }
+    
+    public func getPendingDocumentIds(_ replicatorId: String, collection: Collection) throws ->  [String:Any] {
+        if let replicator = getReplicator(replicatorId: replicatorId) {
+            do {
+                let documentIds = try replicator.pendingDocumentIds(collection: collection)
+                return ["documentIds": documentIds];
+            } catch {
+                throw error
+            }
         } else {
             throw ReplicatorError.unableToFindReplicator(replicatorId: replicatorId)
         }
