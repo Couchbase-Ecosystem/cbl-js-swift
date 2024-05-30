@@ -15,12 +15,36 @@ public struct ReplicatorHelper {
         guard let target = data["target"] as? [String: Any],
               let url = target["url"] as? String,
               let replicatorType = data["replicatorType"] as? String,
-              let continuous = data["continuous"] as? Bool else {
+              let continuous = data["continuous"] as? Bool,
+              let acceptParentDomainCookies = data["acceptParentDomainCookies"] as? Bool,
+              let acceptSelfSignedCerts = data["acceptSelfSignedCerts"] as? Bool,
+              let allowReplicationInBackground = data["allowReplicationInBackground"] as? Bool,
+              let autoPurgeEnabled = data["autoPurgeEnabled"] as? Bool,
+              let heartbeat = data["heartbeat"] as? NSNumber,
+              let maxAttempts = data["maxAttempts"] as? NSNumber,
+              let maxAttemptWaitTime = data["maxAttemptWaitTime"] as? NSNumber
+        else {
             throw ReplicatorError.fatalError(message: "Invalid JSON data")
         }
         
         let endpoint = URLEndpoint(url: URL(string: url)!)
+        
+        //set values from data
         var replConfig = ReplicatorConfiguration(target: endpoint)
+        replConfig.acceptParentDomainCookie = acceptSelfSignedCerts
+        replConfig.acceptParentDomainCookie = acceptParentDomainCookies
+        replConfig.allowReplicatingInBackground = allowReplicationInBackground
+        replConfig.continuous = continuous
+        replConfig.enableAutoPurge = autoPurgeEnabled
+    
+        replConfig.heartbeat = TimeInterval(exactly: heartbeat.int64Value) ?? 300
+        replConfig.maxAttemptWaitTime = TimeInterval(exactly: maxAttemptWaitTime.int64Value) ?? 0
+        replConfig.maxAttempts = maxAttempts.uintValue
+        
+        //check for headers
+        if let headers = data["headers"] as? [String: String] {
+            replConfig.headers = headers
+        }
         
         if let authenticatorData = data["authenticator"], !(authenticatorData is String && authenticatorData as! String == "")  {
             if let authenticatorConfig = authenticatorData as? [String: Any] {
@@ -43,10 +67,6 @@ public struct ReplicatorHelper {
             default:
                 throw ReplicatorError.fatalError(message: "Invalid replicatorType")
         }
-        
-        replConfig.continuous = continuous
-        
-        
         return replConfig
     }
     
