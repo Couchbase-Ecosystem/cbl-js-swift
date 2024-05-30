@@ -7,7 +7,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'CbliteSwiftJsLib'
-  s.version          = '0.1.0'
+  s.version          = '0.1.6'
   s.summary          = 'Couchbase Lite Swift libary for cblite.js (Javascript) Library'
 
 # This description is used to generate tags and improve search results.
