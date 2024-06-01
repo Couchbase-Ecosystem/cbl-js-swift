@@ -12,7 +12,7 @@ import CouchbaseLiteSwift
 public struct ReplicatorHelper {
     
     public static func replicatorConfigFromJson(_ data: [String: Any], collectionConfiguration: [CollectionConfigItem]) throws -> ReplicatorConfiguration {
-        guard let target = data["target"] as? [String: Any],
+       guard let target = data["target"] as? [String: Any],
               let url = target["url"] as? String,
               let replicatorType = data["replicatorType"] as? String,
               let continuous = data["continuous"] as? Bool,
