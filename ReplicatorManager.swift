@@ -93,7 +93,8 @@ public class ReplicatorManager {
         if let replicator = getReplicator(replicatorId: replicatorId) {
             do {
                 let documentIds = try replicator.pendingDocumentIds(collection: collection)
-                return ["documentIDs": documentIds];
+                let stringArray = Array(documentIds)
+                return ["pendingDocumentIds": stringArray];
             } catch {
                 throw error
             }
