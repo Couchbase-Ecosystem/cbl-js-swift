@@ -72,12 +72,12 @@ public class DatabaseManager {
 
     public func open(_ databaseName: String, databaseConfig: [AnyHashable: Any]?) throws {
         do {
-            let config = self.buildDatabaseConfig(databaseConfig)
-            let database = try Database(name: databaseName, config: config)
-
             if self.openDatabases[databaseName] != nil {
                 self.openDatabases.removeValue(forKey: databaseName)
             }
+            
+            let config = self.buildDatabaseConfig(databaseConfig)
+            let database = try Database(name: databaseName, config: config)
             self.openDatabases[databaseName] = database
         } catch {
             throw DatabaseError.unableToOpenDatabase(databaseName: databaseName)
@@ -121,6 +121,20 @@ public class DatabaseManager {
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
         }
         return database.path
+    }
+    
+    public func changeEncryptionKey(_ databaseName: String,
+                                    newKey: String?) throws {
+        guard let database = self.getDatabase(databaseName) else {
+            throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
+        }
+        if let newKeyString =  newKey {
+            let encryptionKey = EncryptionKey.password(newKeyString)
+            try database.changeEncryptionKey(encryptionKey)
+            return
+        }
+        try database.changeEncryptionKey(nil)
+        return
     }
 
     public func copy(_ path: String, newName: String, databaseConfig: [AnyHashable: Any]?) throws {
