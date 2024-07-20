@@ -111,6 +111,24 @@ public class DatabaseManager {
             }
         }
     }
+    
+    public func delete(_ databasePath:String, databaseName: String) throws {
+        if self.openDatabases.keys.contains(databaseName)
+        {
+            throw DatabaseError.unableToDeleteDatabase(message:"Database is open or defined in context, use db.delete function instead.", databaseName: databaseName)
+        }
+        do {
+            try Database.delete(withName: databaseName, inDirectory: databasePath)
+            
+        } catch {
+            if let nsError = error as NSError?, nsError.code == 19 {
+                // SQLite error code 19 (SQLITE_CONSTRAINT) indicates that the database is locked.
+                throw DatabaseError.databaseLocked(databaseName: databaseName)
+            } else {
+                throw DatabaseError.unableToDeleteDatabase(message: "Error deleting database: \(error.localizedDescription)", databaseName: databaseName)
+            }
+        }
+    }
 
     public func exists(_ databaseName: String, directoryPath: String) -> Bool {
         return Database.exists(withName: databaseName, inDirectory: directoryPath)
