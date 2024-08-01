@@ -57,12 +57,6 @@ public class CollectionManager {
     
     // MARK: - Helper Functions
     
-    public func getCollectionKey(_ collectionName: String,
-                                 scopeName: String,
-                                 databaseName: String) -> String {
-        return "\(databaseName).\(scopeName).\(collectionName)"
-    }
-    
     public func getCollection(_ collectionName: String,
                               scopeName: String,
                               databaseName: String) throws -> Collection? {
@@ -71,10 +65,6 @@ public class CollectionManager {
         }
         
         do {
-            let key = getCollectionKey(
-                collectionName,
-                scopeName: scopeName,
-                databaseName: databaseName)
             guard let collection = try database.collection(
                 name: collectionName,
                 scope: scopeName) else {
