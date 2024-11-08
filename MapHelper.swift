@@ -15,7 +15,16 @@ public struct MapHelper {
         let documentAsMap = document.toDictionary()
         for (key, value) in documentAsMap {
             if let blobEntry = value as? Blob {
-                docMap[key] = blobEntry.properties
+                var properties = blobEntry.properties
+                if let data = blobEntry.content {
+                    var content: [Int] = []
+                    data.regions.forEach { region in
+                        for byte in region {
+                            content.append(Int(byte))
+                        }
+                    }
+                    docMap[key] = properties.merging(["raw": content]) { (_, new) in new }
+                }
             } else {
                 docMap[key] = value
             }

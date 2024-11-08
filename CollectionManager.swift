@@ -2,8 +2,6 @@
 //  CollectionManager.swift
 //  CbliteSwiftJsLib
 //
-//  Created by Aaron LaBeau on 07/04/24.
-//
 
 import Foundation
 import CouchbaseLiteSwift
@@ -26,6 +24,18 @@ public struct CollectionDto: Codable {
 public struct ConfigDto: Codable {
     let channels: [String]
     let documentIds: [String]
+}
+
+public struct DocumentDto: Codable {
+    let document: String
+    let blobs: String
+}
+
+public struct CollectionDocumentResult {
+    let id: String
+    let revId: String?
+    let sequence: UInt64
+    let concurrencyControl: Bool?
 }
 
 public enum CollectionError: Error {
@@ -56,6 +66,41 @@ public class CollectionManager {
     }
     
     // MARK: - Helper Functions
+    
+    public func blobsFromJsonString(_ value: String) throws -> [String: Blob] {
+        var blobs = [String: Blob]()
+        if (value.isEmpty || value == "[]") {
+            return blobs
+        }
+        do {
+            if let data = value.data(using: .utf8) {
+                if let map = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                    for (key, value) in map {
+                        if let object = value as? [String: Any],
+                           let type = object["_type"] as? String, type == "blob" {
+                            if let blobData = object["data"] as? [String: Any],
+                               let contentType = blobData["contentType"] as? String,
+                               let bytes = blobData["data"] as? [NSNumber] {
+                                
+                                var bytesCArray = [UInt8](repeating: 0, count: bytes.count)
+                                for (index, byte) in bytes.enumerated() {
+                                    bytesCArray[index] = byte.uint8Value
+                                }
+                                
+                                let data = Data(bytesCArray)
+                                let blob = Blob(contentType: contentType, data: data)
+                                blobs[key] = blob
+                                continue
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {
+           throw error
+        }
+        return blobs
+    }
     
     public func getCollection(_ collectionName: String,
                               scopeName: String,
@@ -146,127 +191,6 @@ public class CollectionManager {
     
     // MARK: Document Functions
     
-    public func documentsCount(_ collectionName: String,
-                               scopeName: String,
-                               databaseName: String) throws -> UInt64 {
-        
-        guard let collection = try self.getCollection(
-            collectionName,
-            scopeName: scopeName,
-            databaseName: databaseName) else {
-            throw CollectionError.unableToFindCollection(
-                collectionName: collectionName,
-                scopeName: scopeName,
-                databaseName: databaseName)
-        }
-        return collection.count
-    }
-    
-    public func saveDocument(_ documentId: String,
-                             document: [String: Any],
-                             concurrencyControl: ConcurrencyControl?,
-                             collectionName: String,
-                             scopeName: String,
-                             databaseName: String) throws -> (String, Bool?) {
-        
-        guard let collection = try self.getCollection(
-            collectionName,
-            scopeName: scopeName,
-            databaseName: databaseName) else {
-            throw CollectionError.unableToFindCollection(
-                collectionName: collectionName,
-                scopeName: scopeName,
-                databaseName: databaseName)
-        }
-        let mutableDocument: MutableDocument
-        if !documentId.isEmpty {
-            mutableDocument = MutableDocument(id: documentId, data: MapHelper.toMap(document))
-        } else {
-            mutableDocument = MutableDocument(data: MapHelper.toMap(document))
-        }
-        
-        do {
-            
-            if let concurrencyControlValue = concurrencyControl {
-                let results = try collection.save(document: mutableDocument, concurrencyControl: concurrencyControlValue)
-                if results {
-                    return (mutableDocument.id, true)
-                }
-                return (mutableDocument.id, false)
-            } else {
-                try collection.save(document: mutableDocument)
-                return (documentId, nil)
-            }
-        } catch {
-            throw CollectionError.documentError(
-                message: error.localizedDescription,
-                collectionName: collectionName,
-                scopeName: scopeName,
-                databaseName: databaseName)
-        }
-    }
-    
-    public func document(_ documentId: String,
-                         collectionName: String,
-                         scopeName: String,
-                         databaseName: String) throws -> Document? {
-        
-        guard let collection = try self.getCollection(
-            collectionName,
-            scopeName: scopeName,
-            databaseName: databaseName) else {
-            throw CollectionError.unableToFindCollection(
-                collectionName: collectionName,
-                scopeName: scopeName,
-                databaseName: databaseName)
-        }
-        do {
-            let document =  try collection.document(id: documentId)
-            return document
-        } catch {
-            throw CollectionError.documentError(
-                message: error.localizedDescription,
-                collectionName: collectionName,
-                scopeName: scopeName,
-                databaseName: databaseName)
-        }
-    }
-    
-    public func getBlobContent(_ key: String,
-                               documentId: String,
-                               collectionName: String,
-                               scopeName: String,
-                               databaseName: String) throws -> [Int]? {
-        guard let collection = try self.getCollection(
-            collectionName,
-            scopeName: scopeName,
-            databaseName: databaseName) else {
-            throw CollectionError.unableToFindCollection(
-                collectionName: collectionName,
-                scopeName: scopeName,
-                databaseName: databaseName)
-        }
-        
-        guard let document = try collection.document(id: documentId) else {
-            throw CollectionError.documentError(message: "can't find document", collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
-        }
-        
-        guard let blob = document.blob(forKey: key) else {
-            return []
-        }
-        
-        if let data = blob.content {
-            var content: [Int] = []
-            data.regions.forEach { region in
-                for byte in region {
-                    content.append(Int(byte))
-                }
-            }
-            return content
-        }
-        return []
-    }
-    
     public func deleteDocument(_ documentId: String,
                                collectionName: String,
                                scopeName: String,
@@ -342,6 +266,110 @@ public class CollectionManager {
         }
     }
     
+    public func document(_ documentId: String,
+                         collectionName: String,
+                         scopeName: String,
+                         databaseName: String) throws -> Document? {
+        
+        guard let collection = try self.getCollection(
+            collectionName,
+            scopeName: scopeName,
+            databaseName: databaseName) else {
+            throw CollectionError.unableToFindCollection(
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName)
+        }
+        do {
+            let document =  try collection.document(id: documentId)
+            return document
+        } catch {
+            throw CollectionError.documentError(
+                message: error.localizedDescription,
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName)
+        }
+    }
+    
+    public func documentsCount(_ collectionName: String,
+                               scopeName: String,
+                               databaseName: String) throws -> UInt64 {
+        
+        guard let collection = try self.getCollection(
+            collectionName,
+            scopeName: scopeName,
+            databaseName: databaseName) else {
+            throw CollectionError.unableToFindCollection(
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName)
+        }
+        return collection.count
+    }
+    
+    public func getDocumentExpiration(_ documentId: String,
+                                      collectionName: String,
+                                      scopeName: String,
+                                      databaseName: String) throws -> Date? {
+        
+        guard let collection = try self.getCollection(
+            collectionName,
+            scopeName: scopeName,
+            databaseName: databaseName) else {
+            throw CollectionError.unableToFindCollection(
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName)
+        }
+        do {
+            let result = try collection.getDocumentExpiration(id: documentId)
+            return result
+        } catch {
+            throw CollectionError.documentError(
+                message: error.localizedDescription,
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName)
+        }
+        
+    }
+    
+    public func getBlobContent(_ key: String,
+                               documentId: String,
+                               collectionName: String,
+                               scopeName: String,
+                               databaseName: String) throws -> [Int]? {
+        guard let collection = try self.getCollection(
+            collectionName,
+            scopeName: scopeName,
+            databaseName: databaseName) else {
+            throw CollectionError.unableToFindCollection(
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName)
+        }
+        
+        guard let document = try collection.document(id: documentId) else {
+            throw CollectionError.documentError(message: "can't find document", collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
+        }
+        
+        guard let blob = document.blob(forKey: key) else {
+            return []
+        }
+        
+        if let data = blob.content {
+            var content: [Int] = []
+            data.regions.forEach { region in
+                for byte in region {
+                    content.append(Int(byte))
+                }
+            }
+            return content
+        }
+        return []
+    }
+    
     public func purgeDocument(_ documentId: String,
                               collectionName: String,
                               scopeName: String,
@@ -358,6 +386,70 @@ public class CollectionManager {
         }
         do {
             try collection.purge(id: documentId)
+        } catch {
+            throw CollectionError.documentError(
+                message: error.localizedDescription,
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName)
+        }
+    }
+    
+    public func saveDocument(_ documentId: String,
+                             document: String,
+                             blobs: [String: Blob],
+                             concurrencyControl: ConcurrencyControl?,
+                             collectionName: String,
+                             scopeName: String,
+                             databaseName: String) throws -> CollectionDocumentResult {
+        
+        guard let collection = try self.getCollection(
+            collectionName,
+            scopeName: scopeName,
+            databaseName: databaseName) else {
+            throw CollectionError.unableToFindCollection(
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName)
+        }
+    
+        do {
+            //create the document
+            let mutableDocument: MutableDocument
+            if !documentId.isEmpty {
+                mutableDocument = try MutableDocument(id: documentId, json: document)
+            } else {
+                mutableDocument = try MutableDocument(json: document)
+            }
+
+            //update the document with the blobs
+            for (key, blob) in blobs {
+                mutableDocument.setBlob(blob, forKey: key)
+            }
+            
+            if let concurrencyControlValue = concurrencyControl {
+                let results = try collection.save(document: mutableDocument, concurrencyControl: concurrencyControlValue)
+                if results {
+                    return CollectionDocumentResult(
+                        id: mutableDocument.id,
+                        revId:  mutableDocument.revisionID,
+                        sequence: mutableDocument.sequence,
+                        concurrencyControl: true)
+                    
+                }
+                return CollectionDocumentResult(
+                    id: mutableDocument.id,
+                    revId:  mutableDocument.revisionID,
+                    sequence: mutableDocument.sequence,
+                    concurrencyControl: false)
+            } else {
+                try collection.save(document: mutableDocument)
+                return CollectionDocumentResult(
+                    id: mutableDocument.id,
+                    revId:  mutableDocument.revisionID,
+                    sequence: mutableDocument.sequence,
+                    concurrencyControl: nil)
+            }
         } catch {
             throw CollectionError.documentError(
                 message: error.localizedDescription,
@@ -393,33 +485,5 @@ public class CollectionManager {
                 scopeName: scopeName,
                 databaseName: databaseName)
         }
-        
-    }
-    
-    public func getDocumentExpiration(_ documentId: String,
-                                      collectionName: String,
-                                      scopeName: String,
-                                      databaseName: String) throws -> Date? {
-        
-        guard let collection = try self.getCollection(
-            collectionName,
-            scopeName: scopeName,
-            databaseName: databaseName) else {
-            throw CollectionError.unableToFindCollection(
-                collectionName: collectionName,
-                scopeName: scopeName,
-                databaseName: databaseName)
-        }
-        do {
-            let result = try collection.getDocumentExpiration(id: documentId)
-            return result
-        } catch {
-            throw CollectionError.documentError(
-                message: error.localizedDescription,
-                collectionName: collectionName,
-                scopeName: scopeName,
-                databaseName: databaseName)
-        }
-        
     }
 }
