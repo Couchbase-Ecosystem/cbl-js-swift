@@ -402,7 +402,6 @@ public class CollectionManager {
                              collectionName: String,
                              scopeName: String,
                              databaseName: String) throws -> CollectionDocumentResult {
-        
         guard let collection = try self.getCollection(
             collectionName,
             scopeName: scopeName,
@@ -412,7 +411,7 @@ public class CollectionManager {
                 scopeName: scopeName,
                 databaseName: databaseName)
         }
-    
+
         do {
             //create the document
             let mutableDocument: MutableDocument
@@ -426,7 +425,7 @@ public class CollectionManager {
             for (key, blob) in blobs {
                 mutableDocument.setBlob(blob, forKey: key)
             }
-            
+
             if let concurrencyControlValue = concurrencyControl {
                 let results = try collection.save(document: mutableDocument, concurrencyControl: concurrencyControlValue)
                 if results {
