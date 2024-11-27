@@ -1,11 +1,9 @@
 //
 //  DatabaseManager.swift
-//  Created by Aaron LaBeau on 07/04/24.
 //
 
 import Foundation
 import CouchbaseLiteSwift
-import os
 
 enum DatabaseError: Error {
     case invalidDatabaseName(databaseName: String)
@@ -35,7 +33,6 @@ public class DatabaseManager {
     /* collections */
     private var defaultCollectionName: String = "_default"
     private var defaultScopeName: String = "_default"
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "cblite DatabaseManager")
 
     private let databaseQueue = DispatchQueue(label: "com.couchbase.lite.database.access")
 
@@ -51,9 +48,7 @@ public class DatabaseManager {
     // MARK: - Helper Functions
 
     public func getDatabase(_ name: String) -> Database? {
-        logger.debug("::SWIFT DEBUG:: DatabaseManager getDatabase: called trying to get database \(name)")
         return databaseQueue.sync {
-            logger.debug("::SWIFT DEBUG:: got thread sync, returning database \(name)")
             return openDatabases[name]
         }
     }
@@ -100,25 +95,19 @@ public class DatabaseManager {
     }
 
     public func delete(_ databaseName: String) throws {
-        logger.debug("::SWIFT DEBUG:: DatabaseManager delete: called trying to get database \(databaseName)")
         guard let database = self.getDatabase(databaseName) else {
-            logger.error("::SWIFT DEBUG:: DatabaseManager delete: error getting database \(databaseName)")
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
         }
         do {
-            logger.debug("::SWIFT DEBUG:: DatabaseManager delete: trying to delete \(databaseName)")
             return try databaseQueue.sync {
                 try database.delete()
                 openDatabases.removeValue(forKey: databaseName)
-                logger.debug("::SWIFT DEBUG:: DatabaseManager delete: deleted \(databaseName), returning")
             }
         } catch {
             if let nsError = error as NSError?, nsError.code == 19 {
-                logger.error("::SWIFT DEBUG:: DatabaseManager delete: error \(error)")
                 // SQLite error code 19 (SQLITE_CONSTRAINT) indicates that the database is locked.
                 throw DatabaseError.databaseLocked(databaseName: databaseName)
             } else {
-                logger.error("::SWIFT DEBUG:: DatabaseManager delete: error \(error)")
                 throw DatabaseError.unableToDeleteDatabase(message: "Error deleting database: \(error.localizedDescription)", databaseName: databaseName)
             }
         }
