@@ -5,6 +5,7 @@
 
 import Foundation
 import CouchbaseLiteSwift
+import os
 
 public struct CollectionConfigItem: Codable {
     let collections: [CollectionDtoWrapper]
@@ -51,6 +52,8 @@ public class CollectionManager {
     
     private var defaultCollectionName: String = "_default"
     private var defaultScopeName: String = "_default"
+    //create logger
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "cblite CollectionManager")
     
     // MARK: - Private for management of state
     
@@ -105,18 +108,24 @@ public class CollectionManager {
     public func getCollection(_ collectionName: String,
                               scopeName: String,
                               databaseName: String) throws -> Collection? {
+        logger.debug("::SWIFT DEBUG:: CollectionManager getCollection: called, before parsing")
         guard let database = DatabaseManager.shared.getDatabase(databaseName) else {
+            logger.error("::SWIFT DEBUG:: CollectionManager getCollection: error, can't get database \(databaseName)")
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
         }
         
         do {
+            logger.debug("::SWIFT DEBUG:: CollectionManager getCollection: database found, trying to get collection")
             guard let collection = try database.collection(
                 name: collectionName,
                 scope: scopeName) else {
+                logger.error("::SWIFT DEBUG:: CollectionManager getCollection: error trying to get collection \(collectionName) in \(scopeName)")
                 throw CollectionError.unableToFindCollection(collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
             }
+            logger.debug("::SWIFT DEBUG:: CollectionManager getCollection: returning collection")
             return collection
         } catch {
+            logger.error("::SWIFT DEBUG:: CollectionManager getCollection: error \(error)")
             throw CollectionError.getCollection(message: error.localizedDescription, collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
         }
     }
@@ -402,33 +411,40 @@ public class CollectionManager {
                              collectionName: String,
                              scopeName: String,
                              databaseName: String) throws -> CollectionDocumentResult {
-        
+        logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: called, before parsing")
         guard let collection = try self.getCollection(
             collectionName,
             scopeName: scopeName,
             databaseName: databaseName) else {
+            logger.error("::SWIFT DEBUG:: CollectionManager saveDocument: error getting collection \(collectionName) in \(scopeName) in \(databaseName)")
             throw CollectionError.unableToFindCollection(
                 collectionName: collectionName,
                 scopeName: scopeName,
                 databaseName: databaseName)
         }
-    
+        logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: collection found")
+
         do {
             //create the document
+            logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: creating mutable document")
             let mutableDocument: MutableDocument
             if !documentId.isEmpty {
                 mutableDocument = try MutableDocument(id: documentId, json: document)
             } else {
                 mutableDocument = try MutableDocument(json: document)
             }
+            logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: mutable document created, setting blobs")
 
             //update the document with the blobs
             for (key, blob) in blobs {
                 mutableDocument.setBlob(blob, forKey: key)
             }
-            
+            logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: blobs set, checking concurrency control")
+
             if let concurrencyControlValue = concurrencyControl {
+                logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: concurrency control set, calling collection.save")
                 let results = try collection.save(document: mutableDocument, concurrencyControl: concurrencyControlValue)
+                logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: save completed with results \(results) returning")
                 if results {
                     return CollectionDocumentResult(
                         id: mutableDocument.id,
@@ -437,13 +453,16 @@ public class CollectionManager {
                         concurrencyControl: true)
                     
                 }
+                logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: save completed with no results, returning")
                 return CollectionDocumentResult(
                     id: mutableDocument.id,
                     revId:  mutableDocument.revisionID,
                     sequence: mutableDocument.sequence,
                     concurrencyControl: false)
             } else {
+                logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: saving without concurrency control")
                 try collection.save(document: mutableDocument)
+                logger.debug("::SWIFT DEBUG:: CollectionManager saveDocument: save completed, returning")
                 return CollectionDocumentResult(
                     id: mutableDocument.id,
                     revId:  mutableDocument.revisionID,
@@ -451,6 +470,7 @@ public class CollectionManager {
                     concurrencyControl: nil)
             }
         } catch {
+            logger.error("::SWIFT DEBUG:: CollectionManager saveDocument: error \(error)")
             throw CollectionError.documentError(
                 message: error.localizedDescription,
                 collectionName: collectionName,
