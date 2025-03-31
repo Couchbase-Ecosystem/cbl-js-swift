@@ -8,6 +8,103 @@ import JavaScriptCore
 import CouchbaseLiteSwift
 
 public struct ReplicatorHelper {
+    private static let jsContext: JSContext = {
+        let context = JSContext()!
+        
+        let logFunction: @convention(block) (String) -> Void = { message in
+            print("JSFilter log: \(message)")
+        }
+        
+        context.setObject(logFunction, forKeyedSubscript: "log" as NSString)
+        context.evaluateScript("var console = { log: log };")
+        
+        // Handle JavaScript exceptions
+        context.exceptionHandler = { context, exception in
+            if let exc = exception {
+                print("JSFilter Exception: \(exc.toString() ?? "unknown error")")
+            }
+        }
+        
+        return context
+    }()
+    
+  private static func evaluateFilter(_ filterFunction: String, document: Document, flags: DocumentFlags) -> Bool {
+    print("FILTER DEBUG: Evaluating filter for document ID: \(document.id)")
+    
+    // Convert document to dictionary for JS
+    let docDict = document.toDictionary()
+    let jsonData = try? JSONSerialization.data(withJSONObject: docDict, options: [])
+    guard let jsonStr = jsonData.flatMap({ String(data: $0, encoding: .utf8) }) else {
+        print("Failed to convert document to JSON")
+        return false
+    }
+    
+    // Create flags object for JS
+    let flagsDict: [String: Bool] = [
+        "deleted": flags.contains(.deleted),
+        "accessRemoved": flags.contains(.accessRemoved),
+        "isDeleted": flags.contains(.deleted) // Add this for compatibility
+    ]
+    let flagsData = try? JSONSerialization.data(withJSONObject: flagsDict, options: [])
+    guard let flagsStr = flagsData.flatMap({ String(data: $0, encoding: .utf8) }) else {
+        print("Failed to convert flags to JSON")
+        return false
+    }
+    
+    // Create a wrapper function to call the filter with better logging
+    let wrapperScript = """
+    function evaluateFilter() {
+        console.log("FILTER DEBUG: Starting filter evaluation for document");
+        
+        try {
+            const filterFunc = \(filterFunction);
+            console.log("FILTER DEBUG: Filter function defined successfully");
+            
+            const doc = JSON.parse('\(jsonStr)');
+            console.log("FILTER DEBUG: Document parsed, ID: " + (doc._id || doc.id));
+            
+            const flags = JSON.parse('\(flagsStr)');
+            console.log("FILTER DEBUG: Flags parsed: " + JSON.stringify(flags));
+            
+            console.log("FILTER DEBUG: Document name: " + doc.name);
+            
+            // Call the filter with detailed logging
+            console.log("FILTER DEBUG: Calling filter function");
+            const result = filterFunc(doc, flags);
+            console.log("FILTER DEBUG: Filter result: " + result);
+            return result;
+        } catch (e) {
+            console.log('Error in filter function: ' + e);
+            console.log('Error stack: ' + (e.stack || 'No stack available'));
+            return false;
+        }
+    }
+    evaluateFilter();
+    """
+    
+    // Evaluate and get result
+    guard let result = jsContext.evaluateScript(wrapperScript) else {
+        print("Failed to evaluate filter function")
+        return false
+    }
+    
+    // Convert result to boolean
+    if result.isBoolean {
+        let boolResult = result.toBool()
+        print("FILTER DEBUG: Final result for document \(document.id): \(boolResult)")
+        return boolResult
+    }
+    
+    print("Filter function did not return a boolean")
+    return false
+}
+    
+    // Create a ReplicationFilter from a JavaScript function string
+    private static func createFilter(from functionString: String) -> ReplicationFilter {
+        return { (document, flags) -> Bool in
+            return evaluateFilter(functionString, document: document, flags: flags)
+        }
+    }
     
     public static func replicatorConfigFromJson(_ data: [String: Any], collectionConfiguration: [CollectionConfigItem]) throws -> ReplicatorConfiguration {
        guard let target = data["target"] as? [String: Any],
@@ -93,6 +190,14 @@ public struct ReplicatorHelper {
             }
             if item.config.documentIds.count > 0 {
                 collectionConfig.documentIDs = item.config.documentIds
+            }
+            // Process push and pull filters if they exist
+            if let pushFilterStr = item.config.pushFilter, !pushFilterStr.isEmpty {
+                collectionConfig.pushFilter = createFilter(from: pushFilterStr)
+            }
+            
+            if let pullFilterStr = item.config.pullFilter, !pullFilterStr.isEmpty {
+                collectionConfig.pullFilter = createFilter(from: pullFilterStr)
             }
             replicationConfig.addCollections(collections, config: collectionConfig)
         }
