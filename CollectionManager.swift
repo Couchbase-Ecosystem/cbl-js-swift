@@ -24,19 +24,19 @@ public struct CollectionDto: Codable {
 public struct ConfigDto: Codable {
     let channels: [String]
     let documentIds: [String]
-    let pushFilter: String?
-    let pullFilter: String?
+    let pushFilterId: String?
+    let pullFilterId: String?
 
     enum CodingKeys: String, CodingKey {
-        case channels, documentIds, pushFilter, pullFilter
+        case channels, documentIds, pushFilterId, pullFilterId
     }
     
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         channels = try container.decode([String].self, forKey: .channels)
         documentIds = try container.decode([String].self, forKey: .documentIds)
-        pushFilter = try container.decodeIfPresent(String.self, forKey: .pushFilter)
-        pullFilter = try container.decodeIfPresent(String.self, forKey: .pullFilter)
+        pushFilterId = try container.decodeIfPresent(String.self, forKey: .pushFilterId)
+        pullFilterId = try container.decodeIfPresent(String.self, forKey: .pullFilterId)
     }
 }
 

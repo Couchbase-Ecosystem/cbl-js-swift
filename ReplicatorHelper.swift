@@ -8,103 +8,103 @@ import JavaScriptCore
 import CouchbaseLiteSwift
 
 public struct ReplicatorHelper {
-    private static let jsContext: JSContext = {
-        let context = JSContext()!
+//     private static let jsContext: JSContext = {
+//         let context = JSContext()!
         
-        let logFunction: @convention(block) (String) -> Void = { message in
-            print("JSFilter log: \(message)")
-        }
+//         let logFunction: @convention(block) (String) -> Void = { message in
+//             print("JSFilter log: \(message)")
+//         }
         
-        context.setObject(logFunction, forKeyedSubscript: "log" as NSString)
-        context.evaluateScript("var console = { log: log };")
+//         context.setObject(logFunction, forKeyedSubscript: "log" as NSString)
+//         context.evaluateScript("var console = { log: log };")
         
-        // Handle JavaScript exceptions
-        context.exceptionHandler = { context, exception in
-            if let exc = exception {
-                print("JSFilter Exception: \(exc.toString() ?? "unknown error")")
-            }
-        }
+//         // Handle JavaScript exceptions
+//         context.exceptionHandler = { context, exception in
+//             if let exc = exception {
+//                 print("JSFilter Exception: \(exc.toString() ?? "unknown error")")
+//             }
+//         }
         
-        return context
-    }()
+//         return context
+//     }()
     
-  private static func evaluateFilter(_ filterFunction: String, document: Document, flags: DocumentFlags) -> Bool {
-    print("FILTER DEBUG: Evaluating filter for document ID: \(document.id)")
+//   private static func evaluateFilter(_ filterFunction: String, document: Document, flags: DocumentFlags) -> Bool {
+//     print("FILTER DEBUG: Evaluating filter for document ID: \(document.id)")
     
-    // Convert document to dictionary for JS
-    let docDict = document.toDictionary()
-    let jsonData = try? JSONSerialization.data(withJSONObject: docDict, options: [])
-    guard let jsonStr = jsonData.flatMap({ String(data: $0, encoding: .utf8) }) else {
-        print("Failed to convert document to JSON")
-        return false
-    }
+//     // Convert document to dictionary for JS
+//     let docDict = document.toDictionary()
+//     let jsonData = try? JSONSerialization.data(withJSONObject: docDict, options: [])
+//     guard let jsonStr = jsonData.flatMap({ String(data: $0, encoding: .utf8) }) else {
+//         print("Failed to convert document to JSON")
+//         return false
+//     }
     
-    // Create flags object for JS
-    let flagsDict: [String: Bool] = [
-        "deleted": flags.contains(.deleted),
-        "accessRemoved": flags.contains(.accessRemoved),
-        "isDeleted": flags.contains(.deleted) // Add this for compatibility
-    ]
-    let flagsData = try? JSONSerialization.data(withJSONObject: flagsDict, options: [])
-    guard let flagsStr = flagsData.flatMap({ String(data: $0, encoding: .utf8) }) else {
-        print("Failed to convert flags to JSON")
-        return false
-    }
+//     // Create flags object for JS
+//     let flagsDict: [String: Bool] = [
+//         "deleted": flags.contains(.deleted),
+//         "accessRemoved": flags.contains(.accessRemoved),
+//         "isDeleted": flags.contains(.deleted) // Add this for compatibility
+//     ]
+//     let flagsData = try? JSONSerialization.data(withJSONObject: flagsDict, options: [])
+//     guard let flagsStr = flagsData.flatMap({ String(data: $0, encoding: .utf8) }) else {
+//         print("Failed to convert flags to JSON")
+//         return false
+//     }
     
-    // Create a wrapper function to call the filter with better logging
-    let wrapperScript = """
-    function evaluateFilter() {
-        console.log("FILTER DEBUG: Starting filter evaluation for document");
+//     // Create a wrapper function to call the filter with better logging
+//     let wrapperScript = """
+//     function evaluateFilter() {
+//         console.log("FILTER DEBUG: Starting filter evaluation for document");
         
-        try {
-            const filterFunc = \(filterFunction);
-            console.log("FILTER DEBUG: Filter function defined successfully");
+//         try {
+//             const filterFunc = \(filterFunction);
+//             console.log("FILTER DEBUG: Filter function defined successfully");
             
-            const doc = JSON.parse('\(jsonStr)');
-            console.log("FILTER DEBUG: Document parsed, ID: " + (doc._id || doc.id));
+//             const doc = JSON.parse('\(jsonStr)');
+//             console.log("FILTER DEBUG: Document parsed, ID: " + (doc._id || doc.id));
             
-            const flags = JSON.parse('\(flagsStr)');
-            console.log("FILTER DEBUG: Flags parsed: " + JSON.stringify(flags));
+//             const flags = JSON.parse('\(flagsStr)');
+//             console.log("FILTER DEBUG: Flags parsed: " + JSON.stringify(flags));
             
-            console.log("FILTER DEBUG: Document name: " + doc.name);
+//             console.log("FILTER DEBUG: Document name: " + doc.name);
             
-            // Call the filter with detailed logging
-            console.log("FILTER DEBUG: Calling filter function");
-            const result = filterFunc(doc, flags);
-            console.log("FILTER DEBUG: Filter result: " + result);
-            return result;
-        } catch (e) {
-            console.log('Error in filter function: ' + e);
-            console.log('Error stack: ' + (e.stack || 'No stack available'));
-            return false;
-        }
-    }
-    evaluateFilter();
-    """
+//             // Call the filter with detailed logging
+//             console.log("FILTER DEBUG: Calling filter function");
+//             const result = filterFunc(doc, flags);
+//             console.log("FILTER DEBUG: Filter result: " + result);
+//             return result;
+//         } catch (e) {
+//             console.log('Error in filter function: ' + e);
+//             console.log('Error stack: ' + (e.stack || 'No stack available'));
+//             return false;
+//         }
+//     }
+//     evaluateFilter();
+//     """
     
-    // Evaluate and get result
-    guard let result = jsContext.evaluateScript(wrapperScript) else {
-        print("Failed to evaluate filter function")
-        return false
-    }
+//     // Evaluate and get result
+//     guard let result = jsContext.evaluateScript(wrapperScript) else {
+//         print("Failed to evaluate filter function")
+//         return false
+//     }
     
-    // Convert result to boolean
-    if result.isBoolean {
-        let boolResult = result.toBool()
-        print("FILTER DEBUG: Final result for document \(document.id): \(boolResult)")
-        return boolResult
-    }
+//     // Convert result to boolean
+//     if result.isBoolean {
+//         let boolResult = result.toBool()
+//         print("FILTER DEBUG: Final result for document \(document.id): \(boolResult)")
+//         return boolResult
+//     }
     
-    print("Filter function did not return a boolean")
-    return false
-}
+//     print("Filter function did not return a boolean")
+//     return false
+// }
     
-    // Create a ReplicationFilter from a JavaScript function string
-    private static func createFilter(from functionString: String) -> ReplicationFilter {
-        return { (document, flags) -> Bool in
-            return evaluateFilter(functionString, document: document, flags: flags)
-        }
-    }
+//     // Create a ReplicationFilter from a JavaScript function string
+//     private static func createFilter(from functionString: String) -> ReplicationFilter {
+//         return { (document, flags) -> Bool in
+//             return evaluateFilter(functionString, document: document, flags: flags)
+//         }
+//     }
     
     public static func replicatorConfigFromJson(_ data: [String: Any], collectionConfiguration: [CollectionConfigItem]) throws -> ReplicatorConfiguration {
        guard let target = data["target"] as? [String: Any],
@@ -165,43 +165,105 @@ public struct ReplicatorHelper {
         return replConfig
     }
     
-    public static func replicatorCollectionConfigFromJson(_ data:  [CollectionConfigItem], replicationConfig: inout ReplicatorConfiguration) throws {
-        
-        //work on the collections sent in as part of the configuration with an array of collectionName, scopeName, and databaseName
-        for item in data {
+    // public static func replicatorCollectionConfigFromJson(_ data:  [CollectionConfigItem], replicationConfig: inout ReplicatorConfiguration) throws {
+
+    //     //work on the collections sent in as part of the configuration with an array of collectionName, scopeName, and databaseName
+    //     for item in data {
             
-            var collections: [Collection] = []
+    //         var collections: [Collection] = []
             
-            for col in item.collections {
+    //         for col in item.collections {
                 
-                guard let collection = try CollectionManager.shared.getCollection(col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName) else {
-                    throw CollectionError.unableToFindCollection(collectionName: col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName)
-                }
-                collections.append(collection)
-            }
+    //             guard let collection = try CollectionManager.shared.getCollection(col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName) else {
+    //                 throw CollectionError.unableToFindCollection(collectionName: col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName)
+    //             }
+    //             collections.append(collection)
+    //         }
             
-            //process the config part of the data
-            var collectionConfig = CollectionConfiguration()
+    //         //process the config part of the data
+    //         var collectionConfig = CollectionConfiguration()
             
-            //get the channels and documentIds to filter for the collections
-            //these are optional
-            if item.config.channels.count > 0 {
-                collectionConfig.channels =  item.config.channels
-            }
-            if item.config.documentIds.count > 0 {
-                collectionConfig.documentIDs = item.config.documentIds
-            }
-            // Process push and pull filters if they exist
-            if let pushFilterStr = item.config.pushFilter, !pushFilterStr.isEmpty {
-                collectionConfig.pushFilter = createFilter(from: pushFilterStr)
-            }
+    //         //get the channels and documentIds to filter for the collections
+    //         //these are optional
+    //         if item.config.channels.count > 0 {
+    //             collectionConfig.channels =  item.config.channels
+    //         }
+    //         if item.config.documentIds.count > 0 {
+    //             collectionConfig.documentIDs = item.config.documentIds
+    //         }
+    //         // // Process push and pull filters if they exist
+    //         // if let pushFilterStr = item.config.pushFilter, !pushFilterStr.isEmpty {
+    //         //     collectionConfig.pushFilter = createFilter(from: pushFilterStr)
+    //         // }
             
-            if let pullFilterStr = item.config.pullFilter, !pullFilterStr.isEmpty {
-                collectionConfig.pullFilter = createFilter(from: pullFilterStr)
-            }
-            replicationConfig.addCollections(collections, config: collectionConfig)
-        }
+    //         // if let pullFilterStr = item.config.pullFilter, !pullFilterStr.isEmpty {
+    //         //     collectionConfig.pullFilter = createFilter(from: pullFilterStr)
+    //         // }
+    //         // replicationConfig.addCollections(collections, config: collectionConfig)
+
+    //          // Set up push filter if provided
+    //         if let pushFilterId = item.config.pushFilterId, !pushFilterId.isEmpty {
+    //             collectionConfig.pushFilter = { (document, flags) -> Bool in
+    //                 // We need to access the shared CblReactnative instance
+    //                 // This is assuming CblReactnative is accessible as a singleton
+    //                 return CblReactnative.shared.evaluateFilter(filterId: pushFilterId, document: document, flags: flags)
+    //             }
+    //         }
+        
+    //          // Set up pull filter if provided
+    //         if let pullFilterId = item.config.pullFilterId, !pullFilterId.isEmpty {
+    //             collectionConfig.pullFilter = { (document, flags) -> Bool in
+    //                 return CblReactnative.shared.evaluateFilter(filterId: pullFilterId, document: document, flags: flags)
+    //             }
+    //         }
+        
+    //         replicationConfig.addCollections(collections, config: collectionConfig)
+    //     }
+    // }
+
+    public static func replicatorCollectionConfigFromJson(_ data: [CollectionConfigItem], replicationConfig: inout ReplicatorConfiguration) throws {
+    // We need a reference to the CblReactnative singleton
+    guard let cblReactnative = CblReactnative.shared else {
+        throw ReplicatorError.fatalError(message: "CblReactnative singleton not initialized")
     }
+    
+    for item in data {
+        var collections: [Collection] = []
+        
+        for col in item.collections {
+            guard let collection = try CollectionManager.shared.getCollection(col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName) else {
+                throw CollectionError.unableToFindCollection(collectionName: col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName)
+            }
+            collections.append(collection)
+        }
+        
+        var collectionConfig = CollectionConfiguration()
+        
+        // Get the channels and documentIds for the collections (optional)
+        if item.config.channels.count > 0 {
+            collectionConfig.channels = item.config.channels
+        }
+        if item.config.documentIds.count > 0 {
+            collectionConfig.documentIDs = item.config.documentIds
+        }
+        
+        // Set up push filter if provided
+        if let pushFilterId = item.config.pushFilterId, !pushFilterId.isEmpty {
+            collectionConfig.pushFilter = { (document, flags) -> Bool in
+                return cblReactnative.evaluateFilter(filterId: pushFilterId, document: document, flags: flags)
+            }
+        }
+        
+        // Set up pull filter if provided
+        if let pullFilterId = item.config.pullFilterId, !pullFilterId.isEmpty {
+            collectionConfig.pullFilter = { (document, flags) -> Bool in
+                return cblReactnative.evaluateFilter(filterId: pullFilterId, document: document, flags: flags)
+            }
+        }
+        
+        replicationConfig.addCollections(collections, config: collectionConfig)
+    }
+}
     
     private static func replicatorAuthenticatorFromConfig(_ config: [String: Any]?) -> Authenticator? {
         guard let type = config?["type"] as? String,
