@@ -70,15 +70,17 @@ public class DatabaseManager {
 
     // MARK: Database Functions
 
-    public func open(_ databaseName: String, databaseConfig: [AnyHashable: Any]?) throws {
+    public func open(_ databaseName: String, databaseConfig: [AnyHashable: Any]?) throws -> String {
         do {
-            if self.openDatabases[databaseName] != nil {
-                self.openDatabases.removeValue(forKey: databaseName)
-            }
+            let timestamp = Int(Date().timeIntervalSince1970 * 1000) 
+            let uniqueName = "\(databaseName)_\(timestamp)"
             
             let config = self.buildDatabaseConfig(databaseConfig)
             let database = try Database(name: databaseName, config: config)
-            self.openDatabases[databaseName] = database
+
+            openDatabases[uniqueName] = database
+
+            return uniqueName
         } catch {
             throw DatabaseError.unableToOpenDatabase(databaseName: databaseName)
         }
