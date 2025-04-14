@@ -72,8 +72,8 @@ public class DatabaseManager {
 
     public func open(_ databaseName: String, databaseConfig: [AnyHashable: Any]?) throws -> String {
         do {
-            let timestamp = Int(Date().timeIntervalSince1970 * 1000) 
-            let uniqueName = "\(databaseName)_\(timestamp)"
+            let nanoId = generateNanoId()
+            let uniqueName = "\(databaseName)_\(nanoId)"
             
             let config = self.buildDatabaseConfig(databaseConfig)
             let database = try Database(name: databaseName, config: config)
@@ -318,4 +318,17 @@ public class DatabaseManager {
             throw QueryError.unknownError(message: error.localizedDescription)
         }
     }
+}
+
+func generateNanoId(size: Int = 21) -> String {
+    let alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    let characters = Array(alphabet)
+    var nanoId = ""
+
+    for _ in 0..<size {
+        let randomIndex = Int.random(in: 0..<characters.count)
+        nanoId.append(characters[randomIndex])
+    }
+
+    return nanoId
 }
