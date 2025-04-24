@@ -69,15 +69,17 @@ public class DatabaseManager {
 
     // MARK: Database Functions
 
-    public func open(_ databaseName: String, databaseConfig: [AnyHashable: Any]?) throws {
+    public func open(_ databaseName: String, databaseConfig: [AnyHashable: Any]?) throws -> String {
         do {
-            if self.openDatabases[databaseName] != nil {
-                self.openDatabases.removeValue(forKey: databaseName)
-            }
+            let nanoId = generateNanoId()
+            let uniqueName = "\(databaseName)_\(nanoId)"
             
             let config = self.buildDatabaseConfig(databaseConfig)
             let database = try Database(name: databaseName, config: config)
-            self.openDatabases[databaseName] = database
+
+            openDatabases[uniqueName] = database
+
+            return uniqueName
         } catch {
             throw DatabaseError.unableToOpenDatabase(databaseName: databaseName)
         }
@@ -317,4 +319,17 @@ public class DatabaseManager {
             throw QueryError.unknownError(message: error.localizedDescription)
         }
     }
+}
+
+func generateNanoId(size: Int = 21) -> String {
+    let alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    let characters = Array(alphabet)
+    var nanoId = ""
+
+    for _ in 0..<size {
+        let randomIndex = Int.random(in: 0..<characters.count)
+        nanoId.append(characters[randomIndex])
+    }
+
+    return nanoId
 }
