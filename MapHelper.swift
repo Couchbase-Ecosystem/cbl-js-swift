@@ -7,29 +7,6 @@ import CouchbaseLiteSwift
 
 public struct MapHelper {
 
-    public static func documentToMap(_ document: Document) ->
-    [String: Any] {
-        var docMap = [String: Any]()
-        let documentAsMap = document.toDictionary()
-        for (key, value) in documentAsMap {
-            if let blobEntry = value as? Blob {
-                var properties = blobEntry.properties
-                if let data = blobEntry.content {
-                    var content: [Int] = []
-                    data.regions.forEach { region in
-                        for byte in region {
-                            content.append(Int(byte))
-                        }
-                    }
-                    docMap[key] = properties.merging(["raw": content]) { (_, new) in new }
-                }
-            } else {
-                docMap[key] = value
-            }
-        }
-        return docMap
-    }
-
     public static func resultToMap(_ result: Result,
                                    databaseName: String) ->
                                    [String: Any] {
