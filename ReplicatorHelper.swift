@@ -29,9 +29,9 @@ public struct ReplicatorHelper {
         
         //set values from data
         var replConfig = ReplicatorConfiguration(target: endpoint)
-        replConfig.acceptParentDomainCookie = acceptSelfSignedCerts
         replConfig.acceptParentDomainCookie = acceptParentDomainCookies
         replConfig.allowReplicatingInBackground = allowReplicationInBackground
+        replConfig.acceptOnlySelfSignedServerCertificate = acceptSelfSignedCerts
         replConfig.continuous = continuous
         replConfig.enableAutoPurge = autoPurgeEnabled
     
