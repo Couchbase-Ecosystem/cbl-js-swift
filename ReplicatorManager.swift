@@ -38,14 +38,30 @@ public class ReplicatorManager {
 
     // MARK: Replicator Functions
 
-    public func replicator(_ replicatorConfig: [String: Any], collectionConfiguration: [CollectionConfigItem]) throws -> String {
-            let id = UUID().uuidString
-            let config = try ReplicatorHelper.replicatorConfigFromJson(replicatorConfig, collectionConfiguration: collectionConfiguration)
-        
-            let replicator = Replicator(config: config)
-            replicators[id] = replicator
-            return id
+public func replicator(_ replicatorConfig: [String: Any], collectionConfiguration: [CollectionConfigItem]) throws -> String {
+    print("🔵 Creating replicator with config...")
+    
+    let id = UUID().uuidString
+    let config = try ReplicatorHelper.replicatorConfigFromJson(replicatorConfig, collectionConfiguration: collectionConfiguration)
+    
+    print("🔵 Replicator config created, ID: \(id)")
+    
+    // Log filter configuration
+    for item in collectionConfiguration {
+        if let pushFilter = item.config.pushFilter {
+            print("🔵 Push filter configured: \(pushFilter.prefix(50))...")
+        }
+        if let pullFilter = item.config.pullFilter {
+            print("🔵 Pull filter configured: \(pullFilter.prefix(50))...")
+        }
     }
+    
+    let replicator = Replicator(config: config)
+    replicators[id] = replicator
+    
+    print("🔵 Replicator created successfully")
+    return id
+}
 
     public func start(_ replicatorId: String) throws {
         if let replicator = getReplicator(replicatorId: replicatorId) {

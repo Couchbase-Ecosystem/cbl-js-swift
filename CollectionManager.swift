@@ -24,19 +24,27 @@ public struct CollectionDto: Codable {
 public struct ConfigDto: Codable {
     let channels: [String]
     let documentIds: [String]
-    let pushFilterId: String?
-    let pullFilterId: String?
+    let pushFilter: String?
+    let pullFilter: String?
 
     enum CodingKeys: String, CodingKey {
-        case channels, documentIds, pushFilterId, pullFilterId
+        case channels, documentIds, pushFilter, pullFilter
     }
     
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        channels = try container.decode([String].self, forKey: .channels)
-        documentIds = try container.decode([String].self, forKey: .documentIds)
-        pushFilterId = try container.decodeIfPresent(String.self, forKey: .pushFilterId)
-        pullFilterId = try container.decodeIfPresent(String.self, forKey: .pullFilterId)
+        channels = try container.decodeIfPresent([String].self, forKey: .channels) ?? []
+        documentIds = try container.decodeIfPresent([String].self, forKey: .documentIds) ?? []
+        pushFilter = try container.decodeIfPresent(String.self, forKey: .pushFilter)
+        pullFilter = try container.decodeIfPresent(String.self, forKey: .pullFilter)
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(channels, forKey: .channels)
+        try container.encode(documentIds, forKey: .documentIds)
+        try container.encodeIfPresent(pushFilter, forKey: .pushFilter)
+        try container.encodeIfPresent(pullFilter, forKey: .pullFilter)
     }
 }
 

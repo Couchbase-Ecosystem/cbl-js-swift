@@ -8,103 +8,208 @@ import JavaScriptCore
 import CouchbaseLiteSwift
 
 public struct ReplicatorHelper {
-//     private static let jsContext: JSContext = {
-//         let context = JSContext()!
-        
-//         let logFunction: @convention(block) (String) -> Void = { message in
-//             print("JSFilter log: \(message)")
-//         }
-        
-//         context.setObject(logFunction, forKeyedSubscript: "log" as NSString)
-//         context.evaluateScript("var console = { log: log };")
-        
-//         // Handle JavaScript exceptions
-//         context.exceptionHandler = { context, exception in
-//             if let exc = exception {
-//                 print("JSFilter Exception: \(exc.toString() ?? "unknown error")")
-//             }
-//         }
-        
-//         return context
-//     }()
+    private static let jsContextQueue = DispatchQueue(label: "com.couchbase.jscontext", attributes: .concurrent)
+    private static var filterCallCount = 0
+    private static var lastFilterError: String?
     
-//   private static func evaluateFilter(_ filterFunction: String, document: Document, flags: DocumentFlags) -> Bool {
-//     print("FILTER DEBUG: Evaluating filter for document ID: \(document.id)")
+    private static let jsContext: JSContext = {
+        let context = JSContext()!
+        
+        // Enhanced logging function
+        let logFunction: @convention(block) (String) -> Void = { message in
+            print("🔵 JSFilter: \(message)")
+        }
+        
+        context.setObject(logFunction, forKeyedSubscript: "log" as NSString)
+        context.evaluateScript("var console = { log: log };")
+        
+        // Handle JavaScript exceptions with more detail
+        context.exceptionHandler = { context, exception in
+            if let exc = exception {
+                let errorMsg = "❌ JSFilter Exception: \(exc.toString() ?? "unknown error")"
+                print(errorMsg)
+                lastFilterError = errorMsg
+            }
+        }
+        
+        return context
+    }()
     
-//     // Convert document to dictionary for JS
-//     let docDict = document.toDictionary()
-//     let jsonData = try? JSONSerialization.data(withJSONObject: docDict, options: [])
-//     guard let jsonStr = jsonData.flatMap({ String(data: $0, encoding: .utf8) }) else {
-//         print("Failed to convert document to JSON")
-//         return false
+    private static func evaluateFilter(_ filterFunction: String, document: Document, flags: DocumentFlags) -> Bool {
+        let filterID = filterCallCount
+        filterCallCount += 1
+        
+        print("🟢 Filter[\(filterID)] START - DocID: \(document.id)")
+//  guard let replicator = ReplicatorManager.shared.replicators.values.first,
+//           replicator.status.activity != .stopped else {
+//         print("⚠️ Filter[\(filterID)] Replicator no longer active, allowing document")
+//         return true  // Allow document if replicator is gone
 //     }
-    
-//     // Create flags object for JS
-//     let flagsDict: [String: Bool] = [
-//         "deleted": flags.contains(.deleted),
-//         "accessRemoved": flags.contains(.accessRemoved),
-//         "isDeleted": flags.contains(.deleted) // Add this for compatibility
-//     ]
-//     let flagsData = try? JSONSerialization.data(withJSONObject: flagsDict, options: [])
-//     guard let flagsStr = flagsData.flatMap({ String(data: $0, encoding: .utf8) }) else {
-//         print("Failed to convert flags to JSON")
-//         return false
-//     }
-    
-//     // Create a wrapper function to call the filter with better logging
-//     let wrapperScript = """
-//     function evaluateFilter() {
-//         console.log("FILTER DEBUG: Starting filter evaluation for document");
         
-//         try {
-//             const filterFunc = \(filterFunction);
-//             console.log("FILTER DEBUG: Filter function defined successfully");
+        return jsContextQueue.sync {
+            do {
+                // Log document size
+                let docDict = document.toDictionary()
+                var fullDocDict = docDict
+                fullDocDict["_id"] = document.id
+                
+                print("🔍 Filter[\(filterID)] Document keys: \(fullDocDict.keys.joined(separator: ", "))")
+                
+                // Convert to JSON string with proper escaping
+                guard let docData = try? JSONSerialization.data(withJSONObject: fullDocDict, options: []) else {
+                    print("❌ Filter[\(filterID)] Failed to serialize document")
+                    return false
+                }
+                
+                let docSize = docData.count
+                print("📊 Filter[\(filterID)] Document size: \(docSize) bytes")
+                
+                guard let docJsonRaw = String(data: docData, encoding: .utf8) else {
+                    print("❌ Filter[\(filterID)] Failed to convert document to string")
+                    return false
+                }
+                
+                // Log if document is particularly large
+                if docSize > 10000 {
+                    print("⚠️ Filter[\(filterID)] Large document detected: \(docSize) bytes")
+                }
+                
+                // Escape the JSON string for JavaScript
+                let docJson = docJsonRaw
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "'", with: "\\'")
+                    .replacingOccurrences(of: "\n", with: "\\n")
+                    .replacingOccurrences(of: "\r", with: "\\r")
+                    .replacingOccurrences(of: "\t", with: "\\t")
+                
+                // Create flags object
+                let flagsDict: [String: Bool] = [
+                    "deleted": flags.contains(.deleted),
+                    "accessRemoved": flags.contains(.accessRemoved)
+                ]
+                
+                print("🏳️ Filter[\(filterID)] Flags: \(flagsDict)")
+                
+                guard let flagsData = try? JSONSerialization.data(withJSONObject: flagsDict, options: []),
+                      let flagsJsonRaw = String(data: flagsData, encoding: .utf8) else {
+                    print("❌ Filter[\(filterID)] Failed to serialize flags")
+                    return false
+                }
+                
+                let flagsJson = flagsJsonRaw
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "'", with: "\\'")
+                
+                // Create and execute the filter script
+                let script = """
+                (function() {
+                    try {
+                        console.log('Filter[\(filterID)] Parsing document...');
+                        const filterFunc = \(filterFunction);
+                        const doc = JSON.parse('\(docJson)');
+                        const flags = JSON.parse('\(flagsJson)');
+                        
+                        console.log('Filter[\(filterID)] Document ID: ' + doc._id);
+                        console.log('Filter[\(filterID)] Calling filter function...');
+                        
+                        // Call the filter function
+                        const result = filterFunc(doc, flags);
+                        
+                        console.log('Filter[\(filterID)] Filter returned: ' + result);
+                        
+                        // Ensure we return a boolean
+                        return !!result;
+                    } catch (e) {
+                        console.log('Filter[\(filterID)] ERROR: ' + e.toString());
+                        console.log('Filter[\(filterID)] Stack: ' + (e.stack || 'No stack trace'));
+                        return false;
+                    }
+                })()
+                """
+                
+                print("🔧 Filter[\(filterID)] Executing script...")
+                
+                // Execute the script with timeout protection
+                let startTime = Date()
+                guard let result = jsContext.evaluateScript(script) else {
+                    print("❌ Filter[\(filterID)] Script evaluation returned nil")
+                    return false
+                }
+                let executionTime = Date().timeIntervalSince(startTime) * 1000 // Convert to ms
+                
+                print("⏱️ Filter[\(filterID)] Execution time: \(String(format: "%.2f", executionTime))ms")
+                
+                // Convert result to boolean
+                let boolResult = result.toBool()
+                print("✅ Filter[\(filterID)] END - Result: \(boolResult)")
+                
+                return boolResult
+                
+            } catch {
+                print("❌ Filter[\(filterID)] Caught exception: \(error)")
+                return false
+            }
+        }
+    }
+    
+    // Create a ReplicationFilter from a JavaScript function string
+  private static func createFilter(from functionString: String?) -> ReplicationFilter? {
+    guard let functionString = functionString, !functionString.isEmpty else {
+        return nil
+    }
+    
+    return { (document, flags) -> Bool in
+        // Add circuit breaker for repeated failures
+        if let lastError = lastFilterError, filterCallCount > 10 {
+            print("❌ Filter disabled due to repeated errors: \(lastError)")
+            return true // Allow all documents through if filter is broken
+        }
+        
+        do {
+            // Wrap in exception handler
+            var result = false
+            var completed = false
+            let semaphore = DispatchSemaphore(value: 0)
             
-//             const doc = JSON.parse('\(jsonStr)');
-//             console.log("FILTER DEBUG: Document parsed, ID: " + (doc._id || doc.id));
+            jsContextQueue.async {
+                do {
+                    result = evaluateFilter(functionString, document: document, flags: flags)
+                    completed = true
+                } catch {
+                    print("❌ Filter evaluation exception: \(error)")
+                    result = false
+                    completed = true
+                }
+                semaphore.signal()
+            }
             
-//             const flags = JSON.parse('\(flagsStr)');
-//             console.log("FILTER DEBUG: Flags parsed: " + JSON.stringify(flags));
+            // Wait with timeout
+            let timeout = DispatchTime.now() + .milliseconds(10000)
+            if semaphore.wait(timeout: timeout) == .timedOut {
+                print("❌ Filter evaluation timed out for document: \(document.id)")
+                // Don't return immediately - the filter might still complete
+                // Wait a bit more to allow cleanup
+                _ = semaphore.wait(timeout: .now() + .milliseconds(100))
+                return false
+            }
             
-//             console.log("FILTER DEBUG: Document name: " + doc.name);
-            
-//             // Call the filter with detailed logging
-//             console.log("FILTER DEBUG: Calling filter function");
-//             const result = filterFunc(doc, flags);
-//             console.log("FILTER DEBUG: Filter result: " + result);
-//             return result;
-//         } catch (e) {
-//             console.log('Error in filter function: ' + e);
-//             console.log('Error stack: ' + (e.stack || 'No stack available'));
-//             return false;
-//         }
-//     }
-//     evaluateFilter();
-//     """
-    
-//     // Evaluate and get result
-//     guard let result = jsContext.evaluateScript(wrapperScript) else {
-//         print("Failed to evaluate filter function")
-//         return false
-//     }
-    
-//     // Convert result to boolean
-//     if result.isBoolean {
-//         let boolResult = result.toBool()
-//         print("FILTER DEBUG: Final result for document \(document.id): \(boolResult)")
-//         return boolResult
-//     }
-    
-//     print("Filter function did not return a boolean")
-//     return false
-// }
-    
-//     // Create a ReplicationFilter from a JavaScript function string
-//     private static func createFilter(from functionString: String) -> ReplicationFilter {
-//         return { (document, flags) -> Bool in
-//             return evaluateFilter(functionString, document: document, flags: flags)
-//         }
-//     }
+            // Only return result if actually completed
+            return completed ? result : false
+        } catch {
+            print("❌ Unexpected error in filter: \(error)")
+            return false
+        }
+    }
+}
+
+     public static func getFilterDebugInfo() -> String {
+        return """
+        Filter Debug Info:
+        - Total filter calls: \(filterCallCount)
+        - Last error: \(lastFilterError ?? "None")
+        - JSContext valid: \(jsContext != nil)
+        """
+    }
     
     public static func replicatorConfigFromJson(_ data: [String: Any], collectionConfiguration: [CollectionConfigItem]) throws -> ReplicatorConfiguration {
        guard let target = data["target"] as? [String: Any],
@@ -165,105 +270,50 @@ public struct ReplicatorHelper {
         return replConfig
     }
     
-    // public static func replicatorCollectionConfigFromJson(_ data:  [CollectionConfigItem], replicationConfig: inout ReplicatorConfiguration) throws {
-
-    //     //work on the collections sent in as part of the configuration with an array of collectionName, scopeName, and databaseName
-    //     for item in data {
+     public static func replicatorCollectionConfigFromJson(_ data: [CollectionConfigItem], replicationConfig: inout ReplicatorConfiguration) throws {
+        for item in data {
+            var collections: [Collection] = []
             
-    //         var collections: [Collection] = []
+            // Get all collections for this configuration
+            for col in item.collections {
+                guard let collection = try CollectionManager.shared.getCollection(
+                    col.collection.name,
+                    scopeName: col.collection.scopeName,
+                    databaseName: col.collection.databaseName
+                ) else {
+                    throw CollectionError.unableToFindCollection(
+                        collectionName: col.collection.name,
+                        scopeName: col.collection.scopeName,
+                        databaseName: col.collection.databaseName
+                    )
+                }
+                collections.append(collection)
+            }
             
-    //         for col in item.collections {
-                
-    //             guard let collection = try CollectionManager.shared.getCollection(col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName) else {
-    //                 throw CollectionError.unableToFindCollection(collectionName: col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName)
-    //             }
-    //             collections.append(collection)
-    //         }
+            // Process the config part of the data
+            var collectionConfig = CollectionConfiguration()
             
-    //         //process the config part of the data
-    //         var collectionConfig = CollectionConfiguration()
+            // Set channels and document IDs
+            if item.config.channels.count > 0 {
+                collectionConfig.channels = item.config.channels
+            }
+            if item.config.documentIds.count > 0 {
+                collectionConfig.documentIDs = item.config.documentIds
+            }
             
-    //         //get the channels and documentIds to filter for the collections
-    //         //these are optional
-    //         if item.config.channels.count > 0 {
-    //             collectionConfig.channels =  item.config.channels
-    //         }
-    //         if item.config.documentIds.count > 0 {
-    //             collectionConfig.documentIDs = item.config.documentIds
-    //         }
-    //         // // Process push and pull filters if they exist
-    //         // if let pushFilterStr = item.config.pushFilter, !pushFilterStr.isEmpty {
-    //         //     collectionConfig.pushFilter = createFilter(from: pushFilterStr)
-    //         // }
+            // Process push and pull filters
+            if let pushFilterStr = item.config.pushFilter, !pushFilterStr.isEmpty {
+                collectionConfig.pushFilter = createFilter(from: pushFilterStr)
+            }
             
-    //         // if let pullFilterStr = item.config.pullFilter, !pullFilterStr.isEmpty {
-    //         //     collectionConfig.pullFilter = createFilter(from: pullFilterStr)
-    //         // }
-    //         // replicationConfig.addCollections(collections, config: collectionConfig)
-
-    //          // Set up push filter if provided
-    //         if let pushFilterId = item.config.pushFilterId, !pushFilterId.isEmpty {
-    //             collectionConfig.pushFilter = { (document, flags) -> Bool in
-    //                 // We need to access the shared CblReactnative instance
-    //                 // This is assuming CblReactnative is accessible as a singleton
-    //                 return CblReactnative.shared.evaluateFilter(filterId: pushFilterId, document: document, flags: flags)
-    //             }
-    //         }
-        
-    //          // Set up pull filter if provided
-    //         if let pullFilterId = item.config.pullFilterId, !pullFilterId.isEmpty {
-    //             collectionConfig.pullFilter = { (document, flags) -> Bool in
-    //                 return CblReactnative.shared.evaluateFilter(filterId: pullFilterId, document: document, flags: flags)
-    //             }
-    //         }
-        
-    //         replicationConfig.addCollections(collections, config: collectionConfig)
-    //     }
-    // }
-
-    public static func replicatorCollectionConfigFromJson(_ data: [CollectionConfigItem], replicationConfig: inout ReplicatorConfiguration) throws {
-    // We need a reference to the CblReactnative singleton
-    guard let cblReactnative = CblReactnative.shared else {
-        throw ReplicatorError.fatalError(message: "CblReactnative singleton not initialized")
+            if let pullFilterStr = item.config.pullFilter, !pullFilterStr.isEmpty {
+                collectionConfig.pullFilter = createFilter(from: pullFilterStr)
+            }
+            
+            // Add collections with their configuration
+            replicationConfig.addCollections(collections, config: collectionConfig)
+        }
     }
-    
-    for item in data {
-        var collections: [Collection] = []
-        
-        for col in item.collections {
-            guard let collection = try CollectionManager.shared.getCollection(col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName) else {
-                throw CollectionError.unableToFindCollection(collectionName: col.collection.name, scopeName: col.collection.scopeName, databaseName: col.collection.databaseName)
-            }
-            collections.append(collection)
-        }
-        
-        var collectionConfig = CollectionConfiguration()
-        
-        // Get the channels and documentIds for the collections (optional)
-        if item.config.channels.count > 0 {
-            collectionConfig.channels = item.config.channels
-        }
-        if item.config.documentIds.count > 0 {
-            collectionConfig.documentIDs = item.config.documentIds
-        }
-        
-        // Set up push filter if provided
-        if let pushFilterId = item.config.pushFilterId, !pushFilterId.isEmpty {
-            collectionConfig.pushFilter = { (document, flags) -> Bool in
-                return cblReactnative.evaluateFilter(filterId: pushFilterId, document: document, flags: flags)
-            }
-        }
-        
-        // Set up pull filter if provided
-        if let pullFilterId = item.config.pullFilterId, !pullFilterId.isEmpty {
-            collectionConfig.pullFilter = { (document, flags) -> Bool in
-                return cblReactnative.evaluateFilter(filterId: pullFilterId, document: document, flags: flags)
-            }
-        }
-        
-        replicationConfig.addCollections(collections, config: collectionConfig)
-    }
-}
     
     private static func replicatorAuthenticatorFromConfig(_ config: [String: Any]?) -> Authenticator? {
         guard let type = config?["type"] as? String,
