@@ -8,7 +8,7 @@ import JavaScriptCore
 import CouchbaseLiteSwift
 
 public struct ReplicatorHelper {
-    private static let jsContextQueue = DispatchQueue(label: "com.couchbase.jscontext", attributes: .concurrent)
+    private static let jsContextQueue = DispatchQueue(label: "com.couchbase.jscontext")
     
     private static let jsContext: JSContext = {
         let context = JSContext()!
@@ -33,72 +33,55 @@ public struct ReplicatorHelper {
     
     private static func evaluateFilter(_ filterFunction: String, document: Document, flags: DocumentFlags) -> Bool {
         return jsContextQueue.sync {
-            // Convert document to dictionary
-            let docDict = document.toDictionary()
-            
-            // Add document ID to the dictionary if not present
-            var fullDocDict = docDict
-            fullDocDict["_id"] = document.id
-            
-            // Convert to JSON string with proper escaping
-            guard let docData = try? JSONSerialization.data(withJSONObject: fullDocDict, options: []),
-                  let docJsonRaw = String(data: docData, encoding: .utf8) else {
-                print("JSFilter: Failed to serialize document")
-                return false
-            }
-            
-            // Escape the JSON string for JavaScript
-            let docJson = docJsonRaw
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "'", with: "\\'")
-                .replacingOccurrences(of: "\n", with: "\\n")
-                .replacingOccurrences(of: "\r", with: "\\r")
-            
-            // Create flags object
-            let flagsDict: [String: Bool] = [
-                "deleted": flags.contains(.deleted),
-                "accessRemoved": flags.contains(.accessRemoved)
-            ]
-            
-            guard let flagsData = try? JSONSerialization.data(withJSONObject: flagsDict, options: []),
-                  let flagsJsonRaw = String(data: flagsData, encoding: .utf8) else {
-                print("JSFilter: Failed to serialize flags")
-                return false
-            }
-            
-            let flagsJson = flagsJsonRaw
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "'", with: "\\'")
-            
-            // Create and execute the filter script
-            let script = """
-            (function() {
-                try {
-                    const filterFunc = \(filterFunction);
-                    const doc = JSON.parse('\(docJson)');
-                    const flags = JSON.parse('\(flagsJson)');
-                    
-                    // Call the filter function
-                    const result = filterFunc(doc, flags);
-                    
-                    // Ensure we return a boolean
-                    return !!result;
-                } catch (e) {
-                    console.log('Filter error: ' + e.toString());
-                    console.log('Stack: ' + (e.stack || 'No stack trace'));
-                    return false;
+                autoreleasepool {
+                // Convert document to dictionary
+                var docDict = document.toDictionary()
+                docDict["_id"] = document.id
+
+                // Create flags object
+                let flagsDict: [String: Bool] = [
+                    "deleted": flags.contains(.deleted),
+                    "accessRemoved": flags.contains(.accessRemoved)
+                ]
+
+                // Set objects directly in JSContext
+                jsContext.setObject(docDict, forKeyedSubscript: "currentDocument" as NSString)
+                jsContext.setObject(flagsDict, forKeyedSubscript: "currentFlags" as NSString)
+                jsContext.setObject(filterFunction, forKeyedSubscript: "filterFunctionString" as NSString)
+                
+                // Create and execute the filter script
+                let script = """
+                (function() {
+                    try {
+                        // Create the filter function from string
+                        const filterFunc = eval('(' + filterFunctionString + ')');
+
+                        const result = filterFunc(currentDocument, currentFlags);
+                        
+                        // Ensure we return a boolean
+                        return !!result;
+                    } catch (e) {
+                        console.log('Filter error: ' + e.toString());
+                        console.log('Stack: ' + (e.stack || 'No stack trace'));
+                        return false;
+                    }
+                })()
+                """
+                
+                // Execute the script
+                guard let result = jsContext.evaluateScript(script) else {
+                    print("JSFilter: Script evaluation returned nil")
+                    return false
                 }
-            })()
-            """
-            
-            // Execute the script
-            guard let result = jsContext.evaluateScript(script) else {
-                print("JSFilter: Script evaluation returned nil")
-                return false
+
+                // Clear references
+                jsContext.setObject(nil, forKeyedSubscript: "currentDocument" as NSString)
+                jsContext.setObject(nil, forKeyedSubscript: "currentFlags" as NSString)
+                jsContext.setObject(nil, forKeyedSubscript: "filterFunctionString" as NSString)
+                
+                // Convert result to boolean
+                return result.toBool()
             }
-            
-            // Convert result to boolean
-            return result.toBool()
         }
     }
 
