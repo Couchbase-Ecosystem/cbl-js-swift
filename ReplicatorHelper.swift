@@ -8,6 +8,93 @@ import JavaScriptCore
 import CouchbaseLiteSwift
 
 public struct ReplicatorHelper {
+    private static let jsContextQueue = DispatchQueue(label: "com.couchbase.jscontext")
+    
+    private static let jsContext: JSContext = {
+        let context = JSContext()!
+        
+        // Setup console.log for debugging
+        let logFunction: @convention(block) (String) -> Void = { message in
+            print("JSFilter: \(message)")
+        }
+        
+        context.setObject(logFunction, forKeyedSubscript: "log" as NSString)
+        context.evaluateScript("var console = { log: log };")
+        
+        // Handle JavaScript exceptions
+        context.exceptionHandler = { context, exception in
+            if let exc = exception {
+                print("JSFilter Exception: \(exc.toString() ?? "unknown error")")
+            }
+        }
+        
+        return context
+    }()
+    
+    private static func evaluateFilter(_ filterFunction: String, document: Document, flags: DocumentFlags) -> Bool {
+        return jsContextQueue.sync {
+                autoreleasepool {
+                // Convert document to dictionary
+                var docDict = document.toDictionary()
+                docDict["_id"] = document.id
+
+                // Create flags object
+                let flagsDict: [String: Bool] = [
+                    "deleted": flags.contains(.deleted),
+                    "accessRemoved": flags.contains(.accessRemoved)
+                ]
+
+                // Set objects directly in JSContext
+                jsContext.setObject(docDict, forKeyedSubscript: "currentDocument" as NSString)
+                jsContext.setObject(flagsDict, forKeyedSubscript: "currentFlags" as NSString)
+                jsContext.setObject(filterFunction, forKeyedSubscript: "filterFunctionString" as NSString)
+                
+                // Create and execute the filter script
+                let script = """
+                (function() {
+                    try {
+                        // Create the filter function from string
+                        const filterFunc = eval('(' + filterFunctionString + ')');
+
+                        const result = filterFunc(currentDocument, currentFlags);
+                        
+                        // Ensure we return a boolean
+                        return !!result;
+                    } catch (e) {
+                        console.log('Filter error: ' + e.toString());
+                        console.log('Stack: ' + (e.stack || 'No stack trace'));
+                        return false;
+                    }
+                })()
+                """
+                
+                // Execute the script
+                guard let result = jsContext.evaluateScript(script) else {
+                    print("JSFilter: Script evaluation returned nil")
+                    return false
+                }
+
+                // Clear references
+                jsContext.setObject(nil, forKeyedSubscript: "currentDocument" as NSString)
+                jsContext.setObject(nil, forKeyedSubscript: "currentFlags" as NSString)
+                jsContext.setObject(nil, forKeyedSubscript: "filterFunctionString" as NSString)
+                
+                // Convert result to boolean
+                return result.toBool()
+            }
+        }
+    }
+
+     // Create a ReplicationFilter from a JavaScript function string
+    private static func createFilter(from functionString: String?) -> ReplicationFilter? {
+        guard let functionString = functionString, !functionString.isEmpty else {
+            return nil
+        }
+        
+        return { (document, flags) -> Bool in
+            return evaluateFilter(functionString, document: document, flags: flags)
+        }
+    }
     
     public static func replicatorConfigFromJson(_ data: [String: Any], collectionConfiguration: [CollectionConfigItem]) throws -> ReplicatorConfiguration {
        guard let target = data["target"] as? [String: Any],
@@ -94,6 +181,12 @@ public struct ReplicatorHelper {
             if item.config.documentIds.count > 0 {
                 collectionConfig.documentIDs = item.config.documentIds
             }
+
+              // Process push filters
+            if let pushFilterStr = item.config.pushFilter, !pushFilterStr.isEmpty {
+                collectionConfig.pushFilter = createFilter(from: pushFilterStr)
+            }
+            
             replicationConfig.addCollections(collections, config: collectionConfig)
         }
     }
