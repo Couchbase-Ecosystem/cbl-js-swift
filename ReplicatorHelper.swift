@@ -36,28 +36,32 @@ public struct ReplicatorHelper {
                 autoreleasepool {
                 // Convert document to dictionary
                 var docDict = document.toDictionary()
-                docDict["_id"] = document.id
+                docDict["id"] = document.id
 
-                // Create flags object
-                let flagsDict: [String: Bool] = [
-                    "deleted": flags.contains(.deleted),
-                    "accessRemoved": flags.contains(.accessRemoved)
-                ]
+                // Create flags array
+                let flagsArray: [String] = [
+                    flags.contains(.deleted) ? "DELETED" : nil,
+                    flags.contains(.accessRemoved) ? "ACCESS_REMOVED" : nil
+                ].compactMap { $0 }
 
                 // Set objects directly in JSContext
                 jsContext.setObject(docDict, forKeyedSubscript: "currentDocument" as NSString)
-                jsContext.setObject(flagsDict, forKeyedSubscript: "currentFlags" as NSString)
+                jsContext.setObject(flagsArray, forKeyedSubscript: "currentFlags" as NSString)
                 jsContext.setObject(filterFunction, forKeyedSubscript: "filterFunctionString" as NSString)
                 
                 // Create and execute the filter script
                 let script = """
                 (function() {
                     try {
+                        // Enum for flags
+                        const ReplicatedDocumentFlag = {
+                            DELETED: 'DELETED',
+                            ACCESS_REMOVED: 'ACCESS_REMOVED'
+                        };
                         // Create the filter function from string
                         const filterFunc = eval('(' + filterFunctionString + ')');
 
                         const result = filterFunc(currentDocument, currentFlags);
-                        
                         // Ensure we return a boolean
                         return !!result;
                     } catch (e) {
@@ -182,9 +186,13 @@ public struct ReplicatorHelper {
                 collectionConfig.documentIDs = item.config.documentIds
             }
 
-              // Process push filters
+            // Process push and pull filters
             if let pushFilterStr = item.config.pushFilter, !pushFilterStr.isEmpty {
                 collectionConfig.pushFilter = createFilter(from: pushFilterStr)
+            }
+
+            if let pullFilterStr = item.config.pullFilter, !pullFilterStr.isEmpty {
+                collectionConfig.pullFilter = createFilter(from: pullFilterStr)
             }
             
             replicationConfig.addCollections(collections, config: collectionConfig)
