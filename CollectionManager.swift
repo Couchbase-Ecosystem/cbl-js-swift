@@ -25,9 +25,10 @@ public struct ConfigDto: Codable {
     let channels: [String]
     let documentIds: [String]
     let pushFilter: String?
+    let pullFilter: String?
 
     enum CodingKeys: String, CodingKey {
-        case channels, documentIds, pushFilter
+        case channels, documentIds, pushFilter, pullFilter
     }
     
     public init(from decoder: Decoder) throws {
@@ -35,6 +36,7 @@ public struct ConfigDto: Codable {
         channels = try container.decodeIfPresent([String].self, forKey: .channels) ?? []
         documentIds = try container.decodeIfPresent([String].self, forKey: .documentIds) ?? []
         pushFilter = try container.decodeIfPresent(String.self, forKey: .pushFilter)
+        pullFilter = try container.decodeIfPresent(String.self, forKey: .pullFilter)
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -42,6 +44,7 @@ public struct ConfigDto: Codable {
         try container.encode(channels, forKey: .channels)
         try container.encode(documentIds, forKey: .documentIds)
         try container.encodeIfPresent(pushFilter, forKey: .pushFilter)
+        try container.encodeIfPresent(pullFilter, forKey: .pullFilter)
     }
 }
 
