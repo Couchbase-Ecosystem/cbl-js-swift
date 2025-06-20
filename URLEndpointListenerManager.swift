@@ -23,11 +23,11 @@ public class URLEndpointListenerManager {
     public func createListener(
         collections: [Collection],
         port: UInt16? = nil,
-        tlsIdentity: TLSIdentity? = nil,
         networkInterface: String? = nil,
         disableTLS: Bool? = nil,
         enableDeltaSync: Bool? = nil,
-        authenticatorConfig: [String: Any]? = nil
+        authenticatorConfig: [String: Any]? = nil,
+        tlsIdentityConfig: [String: Any]? = nil
     ) throws -> String {
         var config = URLEndpointListenerConfiguration(collections: collections)
         if let port = port {
@@ -42,8 +42,31 @@ public class URLEndpointListenerManager {
         if let enableDeltaSync = enableDeltaSync {
             config.enableDeltaSync = enableDeltaSync
         }
-        config.tlsIdentity = nil 
-
+        if let tlsConfig = tlsIdentityConfig {
+            var attrs = tlsConfig["attributes"] as? [String: String] ?? [:]
+            
+            // If we have certAttrCommonName, use the constant key instead
+            if let commonName = attrs.removeValue(forKey: "certAttrCommonName") {
+                attrs[certAttrCommonName] = commonName
+            }
+            
+            let expiration: Date? = {
+                if let expStr = tlsConfig["expiration"] as? String {
+                    let formatter = ISO8601DateFormatter()
+                    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    return formatter.date(from: expStr)
+                }
+                return nil
+            }()
+            let label = tlsConfig["label"] as? String ?? UUID().uuidString
+            let identity = try TLSIdentity.createIdentity(
+                forServer: true,
+                attributes: attrs,
+                expiration: expiration,
+                label: label
+            )
+            config.tlsIdentity = identity
+        }
         if let authenticator = Self.listenerAuthenticatorFromConfig(authenticatorConfig) {
             config.authenticator = authenticator
         }
@@ -86,23 +109,24 @@ public class URLEndpointListenerManager {
 
         return listener.urls?.map { $0.absoluteString } ?? []
     }
-private static func listenerAuthenticatorFromConfig(_ config: [String: Any]?) -> ListenerAuthenticator? {
-    guard let type = config?["type"] as? String,
-          let data = config?["data"] as? [String: Any] else {
-        return nil
-    }
-    switch type {
-    case "basic":
-        guard let username = data["username"] as? String,
-              let password = data["password"] as? String else {
+
+    private static func listenerAuthenticatorFromConfig(_ config: [String: Any]?) -> ListenerAuthenticator? {
+        guard let type = config?["type"] as? String,
+              let data = config?["data"] as? [String: Any] else {
             return nil
         }
-        return ListenerPasswordAuthenticator { (inputUsername, inputPassword) in
-            return inputUsername == username && inputPassword == password
+        switch type {
+        case "basic":
+            guard let username = data["username"] as? String,
+                  let password = data["password"] as? String else {
+                return nil
+            }
+            return ListenerPasswordAuthenticator { (inputUsername, inputPassword) in
+                return inputUsername == username && inputPassword == password
+            }
+        default:
+            return nil
         }
-    default:
-        return nil
     }
-}
 }
 
