@@ -111,7 +111,8 @@ public struct ReplicatorHelper {
               let autoPurgeEnabled = data["autoPurgeEnabled"] as? Bool,
               let heartbeat = data["heartbeat"] as? NSNumber,
               let maxAttempts = data["maxAttempts"] as? NSNumber,
-              let maxAttemptWaitTime = data["maxAttemptWaitTime"] as? NSNumber
+              let maxAttemptWaitTime = data["maxAttemptWaitTime"] as? NSNumber,
+              let pinnedServerCertificate = data["pinnedServerCertificate"] as? String
         else {
             throw ReplicatorError.fatalError(message: "Invalid JSON data")
         }
@@ -125,7 +126,18 @@ public struct ReplicatorHelper {
         replConfig.acceptOnlySelfSignedServerCertificate = acceptSelfSignedCerts
         replConfig.continuous = continuous
         replConfig.enableAutoPurge = autoPurgeEnabled
-    
+        
+        if !pinnedServerCertificate.isEmpty {
+        guard let certData = Data(base64Encoded: pinnedServerCertificate) else {
+            throw ReplicatorError.fatalError(message: "Invalid pinned server certificate")
+        }
+        guard let pinnedCert = SecCertificateCreateWithData(nil, certData as CFData) else {
+            throw ReplicatorError.fatalError(message: "Invalid pinned server certificate")
+        }
+
+        replConfig.pinnedServerCertificate = pinnedCert
+        }
+        
         replConfig.heartbeat = TimeInterval(exactly: heartbeat.int64Value) ?? 300
         replConfig.maxAttemptWaitTime = TimeInterval(exactly: maxAttemptWaitTime.int64Value) ?? 0
         replConfig.maxAttempts = maxAttempts.uintValue

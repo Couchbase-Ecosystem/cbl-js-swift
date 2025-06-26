@@ -10,6 +10,7 @@ enum URLEndpointListenerError: Error {
     
     case unableToFindListener(listenerId: String)
     case databaseNotFound(databaseName: String)
+    case wrongCertData(certBase64: String)
 }
 
 public class URLEndpointListenerManager {
@@ -43,6 +44,9 @@ public class URLEndpointListenerManager {
             config.enableDeltaSync = enableDeltaSync
         }
         if let tlsConfig = tlsIdentityConfig {
+            let mode = tlsConfig["mode"] as? String ?? "selfSigned"
+            let label = tlsConfig["label"] as? String ?? UUID().uuidString
+            if mode == "selfSigned" {
             var attrs = tlsConfig["attributes"] as? [String: String] ?? [:]
             
             // If we have certAttrCommonName, use the constant key instead
@@ -58,7 +62,7 @@ public class URLEndpointListenerManager {
                 }
                 return nil
             }()
-            let label = tlsConfig["label"] as? String ?? UUID().uuidString
+
             let identity = try TLSIdentity.createIdentity(
                 forServer: true,
                 attributes: attrs,
@@ -66,6 +70,20 @@ public class URLEndpointListenerManager {
                 label: label
             )
             config.tlsIdentity = identity
+
+            }
+            if mode == "imported" {
+            let certBase64 = tlsConfig["certBase64"] as? String ?? ""
+            let password = tlsConfig["password"] as? String
+
+            guard let certData = Data(base64Encoded: certBase64) else {
+                throw URLEndpointListenerError.wrongCertData(certBase64: certBase64)
+            }
+
+            let identity = try TLSIdentity.importIdentity(withData: certData, password: password, label: label)
+            config.tlsIdentity = identity
+            }
+
         }
         if let authenticator = Self.listenerAuthenticatorFromConfig(authenticatorConfig) {
             config.authenticator = authenticator
@@ -108,6 +126,10 @@ public class URLEndpointListenerManager {
         }
 
         return listener.urls?.map { $0.absoluteString } ?? []
+    }
+    
+    public func deleteIdentity(label: String) throws {
+        try TLSIdentity.deleteIdentity(withLabel: label)
     }
 
     private static func listenerAuthenticatorFromConfig(_ config: [String: Any]?) -> ListenerAuthenticator? {
