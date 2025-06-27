@@ -56,8 +56,10 @@ public class DatabaseManager {
     public func buildDatabaseConfig(_ config: [AnyHashable: Any]?) -> DatabaseConfiguration {
         var databaseConfiguration = DatabaseConfiguration()
         if let encKey = config?["encryptionKey"] as? String {
-            let key = EncryptionKey.password(encKey)
-            databaseConfiguration.encryptionKey = key
+            #if COUCHBASE_ENTERPRISE
+                let key = EncryptionKey.password(encKey)
+                databaseConfiguration.encryptionKey = key
+            #endif
         }
         if let directory = config?["directory"] as? String {
             // Used to auto set the database to be in the documents folder,
@@ -149,12 +151,14 @@ public class DatabaseManager {
         guard let database = self.getDatabase(databaseName) else {
             throw DatabaseError.invalidDatabaseName(databaseName: databaseName)
         }
-        if let newKeyString =  newKey {
-            let encryptionKey = EncryptionKey.password(newKeyString)
-            try database.changeEncryptionKey(encryptionKey)
-            return
-        }
-        try database.changeEncryptionKey(nil)
+        #if COUCHBASE_ENTERPRISE
+            if let newKeyString =  newKey {
+                let encryptionKey = EncryptionKey.password(newKeyString)
+                try database.changeEncryptionKey(encryptionKey)
+                return
+            }
+            try database.changeEncryptionKey(nil)
+        #endif
         return
     }
 
