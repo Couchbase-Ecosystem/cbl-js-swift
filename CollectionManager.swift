@@ -67,6 +67,7 @@ public enum CollectionError: Error {
     case createIndex(indexName: String, message: String)
     case unknownIndexType(indexType: String)
     case documentError(message: String, collectionName: String, scopeName: String, databaseName: String)
+    case randomError(message: String, collectionName: String, scopeName: String, databaseName: String)
 }
 
 public class CollectionManager {
@@ -506,5 +507,28 @@ public class CollectionManager {
                 scopeName: scopeName,
                 databaseName: databaseName)
         }
+    }
+
+
+    // Retruns the full name of collection in <scopeName>.<collectionName> format
+    public func fullName(_ collectionName: String, scopeName: String, databaseName: String) throws -> String{
+        guard let collection = try self.getCollection(
+            collectionName,
+            scopeName: scopeName,
+            databaseName: databaseName
+        ) else {
+            throw CollectionError.unableToFindCollection(
+                collectionName: collectionName,
+                scopeName: scopeName,
+                databaseName: databaseName
+            )
+        }
+
+        // do {
+            return collection.fullName
+        // }
+        // catch{
+        //     throw CollectionError.randomError(message: "Error getting the full name", collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
+        // } 
     }
 }
