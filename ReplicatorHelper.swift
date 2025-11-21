@@ -507,12 +507,16 @@ public struct ReplicatorHelper {
         // Handle pinned certificate
         print("[OLD API Step 6] Processing pinned certificate...")
         if !pinnedServerCertificate.isEmpty {
-            if let pinnedCert = pinnedServerCertificate.data(using: .utf8) {
-                replConfig.pinnedServerCertificate = SecCertificateCreateWithData(nil, pinnedCert as CFData)
-                print("[OLD API Step 6] ✅ Pinned certificate set")
-            } else {
-                print("[OLD API Step 6] ⚠️ Pinned certificate data conversion failed")
+            guard let certData = Data(base64Encoded: pinnedServerCertificate) else {
+                print("[OLD API Step 6] ⚠️ Pinned certificate data is not valid base64")
+                throw ReplicatorError.fatalError(message: "Invalid pinned server certificate: not valid base64")
             }
+            guard let pinnedCert = SecCertificateCreateWithData(nil, certData as CFData) else {
+                print("[OLD API Step 6] ⚠️ Pinned certificate data is not a valid certificate")
+                throw ReplicatorError.fatalError(message: "Invalid pinned server certificate: not a valid certificate")
+            }
+            replConfig.pinnedServerCertificate = pinnedCert
+            print("[OLD API Step 6] ✅ Pinned certificate set")
         } else {
             print("[OLD API Step 6] ℹ️ No pinned certificate")
         }
