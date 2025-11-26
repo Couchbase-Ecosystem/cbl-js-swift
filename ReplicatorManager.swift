@@ -76,50 +76,27 @@ public class ReplicatorManager {
         _ replicatorConfig: [String: Any],
         collectionConfigJson: String
     ) throws -> String {
-        print("\n╔═══════════════════════════════════════════════════════════════╗")
-        print("║  [ReplicatorManager] CREATING REPLICATOR INSTANCE             ║")
-        print("╚═══════════════════════════════════════════════════════════════╝")
-        
-        print("[ReplicatorManager Step 1] Generating unique ID...")
         let id = UUID().uuidString
-        print("[ReplicatorManager Step 1] ✅ ID generated: \(id)")
         
-        print("[ReplicatorManager Step 2] Creating ReplicatorConfiguration...")
         let config = try ReplicatorHelper.replicatorConfigFromJson(
             replicatorConfig,
             collectionConfigJson: collectionConfigJson
         )
-        print("[ReplicatorManager Step 2] ✅ ReplicatorConfiguration created")
         
-        print("[ReplicatorManager Step 3] Creating Replicator instance...")
         do {
             let replicator = Replicator(config: config)
-            print("[ReplicatorManager Step 3] ✅ Replicator instance created")
-            
-            print("[ReplicatorManager Step 4] Storing replicator in registry...")
             replicators[id] = replicator
-            print("[ReplicatorManager Step 4] ✅ Replicator stored, total count: \(replicators.count)")
-            
-            print("\n╔═══════════════════════════════════════════════════════════════╗")
-            print("║  [ReplicatorManager] ✅ REPLICATOR INSTANCE CREATED           ║")
-            print("╚═══════════════════════════════════════════════════════════════╝\n")
             
             return id
         } catch {
-            print("[ReplicatorManager Step 3] ❌ FAILED: \(error)")
-            print("[ReplicatorManager Step 3] Error type: \(type(of: error))")
             throw error
         }
     }
 
     public func start(_ replicatorId: String) throws {
-        print("\n[ReplicatorManager.start] Attempting to start replicator: \(replicatorId)")
         if let replicator = getReplicator(replicatorId: replicatorId) {
-            print("[ReplicatorManager.start] ✅ Replicator found, starting...")
             replicator.start()
-            print("[ReplicatorManager.start] ✅ Replicator started")
         } else {
-            print("[ReplicatorManager.start] ❌ FAILED: Replicator not found")
             throw ReplicatorError.unableToFindReplicator(replicatorId: replicatorId)
         }
     }

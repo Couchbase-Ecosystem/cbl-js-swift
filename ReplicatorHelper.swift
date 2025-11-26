@@ -234,48 +234,30 @@ public struct ReplicatorHelper {
         _ data: [String: Any],
         collectionConfigJson: String
     ) throws -> ReplicatorConfiguration {
-        print("\n╔════════════════════════════════════════════════════════════════╗")
-        print("║  [ReplicatorHelper] STARTING REPLICATOR CREATION               ║")
-        print("╚════════════════════════════════════════════════════════════════╝")
-        
         // Parse JSON string to data
-        print("[Step 1] Converting JSON string to data...")
         guard let jsonData = collectionConfigJson.data(using: .utf8) else {
-            print("[Step 1] ❌ FAILED: Unable to convert JSON string to data")
             throw ReplicatorError.fatalError(message: "Unable to convert JSON string to data")
         }
-        print("[Step 1] ✅ JSON string converted to data")
         
         // Try to parse as generic JSON to detect format
-        print("[Step 2] Parsing JSON to detect format...")
         guard let jsonArray = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]],
               let firstItem = jsonArray.first else {
-            print("[Step 2] ❌ FAILED: Invalid JSON format")
             throw ReplicatorError.fatalError(message: "Invalid JSON format: expected array of objects")
         }
-        print("[Step 2] ✅ JSON array parsed, count:", jsonArray.count)
         
         // Detect format by checking for "collection" (NEW) vs "collections" (OLD)
-        print("[Step 3] Detecting API format...")
         let isNewApi = firstItem["collection"] != nil
         let isOldApi = firstItem["collections"] != nil
-        print("[Step 3] Detection result - isNewApi:", isNewApi, "isOldApi:", isOldApi)
-        print("[Step 3] firstItem keys:", Array(firstItem.keys))
         
         if isNewApi {
-            print("[Step 4] 🔷 Using NEW API path")
             let decoder = JSONDecoder()
             let collectionConfig = try decoder.decode([CollectionConfigurationDto].self, from: jsonData)
-            print("[Step 4] ✅ Decoded NEW API config, count:", collectionConfig.count)
             return try replicatorConfigFromJson(data, collectionConfiguration: collectionConfig)
         } else if isOldApi {
-            print("[Step 4] 🔶 Using OLD API path")
             let decoder = JSONDecoder()
             let collectionConfig = try decoder.decode([CollectionConfigItem].self, from: jsonData)
-            print("[Step 4] ✅ Decoded OLD API config, count:", collectionConfig.count)
             return try replicatorConfigFromJsonOldApi(data, collectionConfiguration: collectionConfig)
         } else {
-            print("[Step 4] ❌ FAILED: Unrecognized format (no 'collection' or 'collections' key)")
             throw ReplicatorError.fatalError(message: "Unrecognized collection configuration format")
         }
     }
@@ -363,9 +345,9 @@ public struct ReplicatorHelper {
         // STEP 7: Set numeric properties
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         
-        replConfig.heartbeat = TimeInterval(exactly: heartbeat.int64Value) ?? 300
+        replConfig.heartbeat = TimeInterval(heartbeat.doubleValue)
         replConfig.maxAttempts = maxAttempts.uintValue
-        replConfig.maxAttemptWaitTime = TimeInterval(exactly: maxAttemptWaitTime.int64Value) ?? 0
+        replConfig.maxAttemptWaitTime = TimeInterval(maxAttemptWaitTime.doubleValue)
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // STEP 8: Set pinned server certificate (if provided)
@@ -436,12 +418,7 @@ public struct ReplicatorHelper {
         _ data: [String: Any],
         collectionConfiguration: [CollectionConfigItem]
     ) throws -> ReplicatorConfiguration {
-        print("\n[OLD API] ═══════════════════════════════════════════════════════")
-        print("[OLD API] Starting OLD API ReplicatorConfiguration creation")
-        print("[OLD API] ═══════════════════════════════════════════════════════")
-        
         // Parse and validate required fields
-        print("[OLD API Step 1] Parsing required fields from data dictionary...")
         guard let target = data["target"] as? [String: Any],
               let url = target["url"] as? String,
               let replicatorType = data["replicatorType"] as? String,
@@ -455,30 +432,19 @@ public struct ReplicatorHelper {
               let maxAttemptWaitTime = data["maxAttemptWaitTime"] as? NSNumber,
               let pinnedServerCertificate = data["pinnedServerCertificate"] as? String
         else {
-            print("[OLD API Step 1] ❌ FAILED: Required fields missing")
             throw ReplicatorError.fatalError(message: "Invalid JSON data: required fields missing")
         }
-        print("[OLD API Step 1] ✅ All required fields parsed")
-        print("[OLD API Step 1] - URL:", url)
-        print("[OLD API Step 1] - Type:", replicatorType)
-        print("[OLD API Step 1] - Continuous:", continuous)
         
         // Create endpoint
-        print("[OLD API Step 2] Creating URLEndpoint...")
         guard let endpointUrl = URL(string: url) else {
-            print("[OLD API Step 2] ❌ FAILED: Invalid URL")
             throw ReplicatorError.fatalError(message: "Invalid target URL: \(url)")
         }
         let endpoint = URLEndpoint(url: endpointUrl)
-        print("[OLD API Step 2] ✅ URLEndpoint created")
         
         // OLD API: Create config with endpoint only
-        print("[OLD API Step 3] Creating ReplicatorConfiguration with endpoint...")
         var replConfig = ReplicatorConfiguration(target: endpoint)
-        print("[OLD API Step 3] ✅ ReplicatorConfiguration created")
         
         // Set replicator type
-        print("[OLD API Step 4] Setting replicator type: \(replicatorType)")
         switch replicatorType {
         case "PUSH_AND_PULL":
             replConfig.replicatorType = .pushAndPull
@@ -487,163 +453,103 @@ public struct ReplicatorHelper {
         case "PUSH":
             replConfig.replicatorType = .push
         default:
-            print("[OLD API Step 4] ❌ FAILED: Unknown replicator type")
             throw ReplicatorError.fatalError(message: "Unknown replicator type: \(replicatorType)")
         }
-        print("[OLD API Step 4] ✅ Replicator type set")
         
         // Set other properties
-        print("[OLD API Step 5] Setting configuration properties...")
         replConfig.continuous = continuous
         replConfig.acceptParentDomainCookie = acceptParentDomainCookies
         replConfig.acceptOnlySelfSignedServerCertificate = acceptSelfSignedCerts
         replConfig.allowReplicatingInBackground = allowReplicationInBackground
         replConfig.enableAutoPurge = autoPurgeEnabled
-        replConfig.heartbeat = TimeInterval(heartbeat.intValue)
-        replConfig.maxAttempts = UInt(maxAttempts.intValue)
-        replConfig.maxAttemptWaitTime = TimeInterval(maxAttemptWaitTime.intValue)
-        print("[OLD API Step 5] ✅ All properties set")
+        replConfig.heartbeat = TimeInterval(heartbeat.doubleValue)
+        replConfig.maxAttempts = maxAttempts.uintValue
+        replConfig.maxAttemptWaitTime = TimeInterval(maxAttemptWaitTime.doubleValue)
         
         // Handle pinned certificate
-        print("[OLD API Step 6] Processing pinned certificate...")
         if !pinnedServerCertificate.isEmpty {
             guard let certData = Data(base64Encoded: pinnedServerCertificate) else {
-                print("[OLD API Step 6] ⚠️ Pinned certificate data is not valid base64")
                 throw ReplicatorError.fatalError(message: "Invalid pinned server certificate: not valid base64")
             }
             guard let pinnedCert = SecCertificateCreateWithData(nil, certData as CFData) else {
-                print("[OLD API Step 6] ⚠️ Pinned certificate data is not a valid certificate")
                 throw ReplicatorError.fatalError(message: "Invalid pinned server certificate: not a valid certificate")
             }
             replConfig.pinnedServerCertificate = pinnedCert
-            print("[OLD API Step 6] ✅ Pinned certificate set")
-        } else {
-            print("[OLD API Step 6] ℹ️ No pinned certificate")
         }
         
         // Process authenticator
-        print("[OLD API Step 7] Processing authenticator...")
         if let authenticator = data["authenticator"] as? [String: Any],
            let type = authenticator["type"] as? String,
            let authData = authenticator["data"] as? [String: Any] {
-            print("[OLD API Step 7] Authenticator type:", type)
             switch type {
             case "basic":
                 if let username = authData["username"] as? String,
                    let password = authData["password"] as? String {
                     replConfig.authenticator = BasicAuthenticator(username: username, password: password)
-                    print("[OLD API Step 7] ✅ Basic authenticator set")
                 }
             case "session":
                 if let sessionID = authData["sessionId"] as? String {
                     let cookieName = authData["cookieName"] as? String ?? "SyncGatewaySession"
                     replConfig.authenticator = SessionAuthenticator(sessionID: sessionID, cookieName: cookieName)
-                    print("[OLD API Step 7] ✅ Session authenticator set")
                 }
             default:
-                print("[OLD API Step 7] ⚠️ Unknown authenticator type")
                 break
             }
-        } else {
-            print("[OLD API Step 7] ℹ️ No authenticator")
         }
         
         // Process headers
-        print("[OLD API Step 8] Processing headers...")
         if let headers = data["headers"] as? [String: String] {
             replConfig.headers = headers
-            print("[OLD API Step 8] ✅ Headers set:", headers.count, "entries")
-        } else {
-            print("[OLD API Step 8] ℹ️ No headers")
         }
         
         // OLD API: Add collections via mutation
-        print("\n[OLD API Step 9] Processing \(collectionConfiguration.count) collection config item(s)...")
-        for (index, item) in collectionConfiguration.enumerated() {
-            print("\n[OLD API Step 9.\(index + 1)] Processing config item \(index + 1)/\(collectionConfiguration.count)")
-            print("[OLD API Step 9.\(index + 1)] Collections in this item: \(item.collections.count)")
+        for item in collectionConfiguration {
             var collections: [Collection] = []
             
-            for (collIndex, wrapper) in item.collections.enumerated() {
-                print("\n[OLD API Step 9.\(index + 1).\(collIndex + 1)] Processing collection \(collIndex + 1)/\(item.collections.count)")
-                print("[OLD API Step 9.\(index + 1).\(collIndex + 1)] Database: '\(wrapper.collection.databaseName)'")
-                print("[OLD API Step 9.\(index + 1).\(collIndex + 1)] Collection: '\(wrapper.collection.name)'")
-                print("[OLD API Step 9.\(index + 1).\(collIndex + 1)] Scope: '\(wrapper.collection.scopeName)'")
-                
-                print("[OLD API Step 9.\(index + 1).\(collIndex + 1)] Looking up database...")
+            for wrapper in item.collections {
                 guard let db = DatabaseManager.shared.getDatabase(wrapper.collection.databaseName) else {
-                    print("[OLD API Step 9.\(index + 1).\(collIndex + 1)] ❌ FAILED: Database not found")
                     throw CollectionError.databaseNotOpen(name: wrapper.collection.databaseName)
                 }
-                print("[OLD API Step 9.\(index + 1).\(collIndex + 1)] ✅ Database found")
                 
-                print("[OLD API Step 9.\(index + 1).\(collIndex + 1)] Looking up collection...")
                 guard let collection = try db.collection(name: wrapper.collection.name, scope: wrapper.collection.scopeName) else {
-                    print("[OLD API Step 9.\(index + 1).\(collIndex + 1)] ❌ FAILED: Collection not found")
                     throw CollectionError.unableToFindCollection(
                         collectionName: wrapper.collection.name,
                         scopeName: wrapper.collection.scopeName,
                         databaseName: wrapper.collection.databaseName
                     )
                 }
-                print("[OLD API Step 9.\(index + 1).\(collIndex + 1)] ✅ Collection found")
                 collections.append(collection)
             }
             
             // Build collection config from shared ConfigDto
             // Note: Using deprecated API for OLD API backward compatibility
-            print("\n[OLD API Step 9.\(index + 1).Config] Building CollectionConfiguration...")
             var config = CollectionConfiguration()
             
             // Set channels
             if !item.config.channels.isEmpty {
-                print("[OLD API Step 9.\(index + 1).Config] Setting channels: \(item.config.channels)")
                 config.channels = item.config.channels
-            } else {
-                print("[OLD API Step 9.\(index + 1).Config] No channels")
             }
             
             // Set document IDs
             if !item.config.documentIds.isEmpty {
-                print("[OLD API Step 9.\(index + 1).Config] Setting documentIDs: \(item.config.documentIds)")
                 config.documentIDs = item.config.documentIds
-            } else {
-                print("[OLD API Step 9.\(index + 1).Config] No document IDs")
             }
             
             // Set push filter
             if let pushFilter = item.config.pushFilter, !pushFilter.isEmpty {
-                print("[OLD API Step 9.\(index + 1).Config] Setting push filter")
                 config.pushFilter = createFilter(from: pushFilter)
-            } else {
-                print("[OLD API Step 9.\(index + 1).Config] No push filter")
             }
             
             // Set pull filter
             if let pullFilter = item.config.pullFilter, !pullFilter.isEmpty {
-                print("[OLD API Step 9.\(index + 1).Config] Setting pull filter")
                 config.pullFilter = createFilter(from: pullFilter)
-            } else {
-                print("[OLD API Step 9.\(index + 1).Config] No pull filter")
             }
-            print("[OLD API Step 9.\(index + 1).Config] ✅ CollectionConfiguration built")
             
             // Add collections with shared config
             // Note: Using deprecated API for OLD API backward compatibility
-            print("\n[OLD API Step 9.\(index + 1).Add] Adding \(collections.count) collection(s) to replicator config...")
-            do {
-                replConfig.addCollections(collections, config: config)
-                print("[OLD API Step 9.\(index + 1).Add] ✅ Successfully added collections")
-            } catch {
-                print("[OLD API Step 9.\(index + 1).Add] ❌ FAILED: \(error)")
-                throw error
-            }
+            replConfig.addCollections(collections, config: config)
         }
         
-        print("\n[OLD API Step 10] ✅ All collection configurations processed")
-        print("\n╔════════════════════════════════════════════════════════════════╗")
-        print("║  [OLD API] ✅ REPLICATOR CREATION SUCCESSFUL                   ║")
-        print("╚════════════════════════════════════════════════════════════════╝\n")
         return replConfig
     }
 
