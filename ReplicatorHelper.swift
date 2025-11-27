@@ -44,15 +44,30 @@ public struct ReplicatorHelper {
                     flags.contains(.accessRemoved) ? "ACCESS_REMOVED" : nil
                 ].compactMap { $0 }
 
-                // Set objects directly in JSContext
-                jsContext.setObject(docDict, forKeyedSubscript: "currentDocument" as NSString)
-                jsContext.setObject(flagsArray, forKeyedSubscript: "currentFlags" as NSString)
+                // JSON serialize the document to ensure proper JavaScript array/object conversion
+                // When Swift passes dictionaries directly via setObject, nested arrays may not
+                // have all JavaScript Array methods (like .some()). JSON round-trip fixes this.
+                guard let docJsonData = try? JSONSerialization.data(withJSONObject: docDict, options: []),
+                      let docJsonString = String(data: docJsonData, encoding: .utf8),
+                      let flagsJsonData = try? JSONSerialization.data(withJSONObject: flagsArray, options: []),
+                      let flagsJsonString = String(data: flagsJsonData, encoding: .utf8) else {
+                    return false
+                }
+
+                // Set the JSON strings and filter function in JSContext
+                jsContext.setObject(docJsonString, forKeyedSubscript: "currentDocumentJson" as NSString)
+                jsContext.setObject(flagsJsonString, forKeyedSubscript: "currentFlagsJson" as NSString)
                 jsContext.setObject(filterFunction, forKeyedSubscript: "filterFunctionString" as NSString)
                 
                 // Create and execute the filter script
+                // Parse JSON in JavaScript to get proper native JavaScript arrays/objects
                 let script = """
                 (function() {
                     try {
+                        // Parse JSON to get proper JavaScript objects with all methods
+                        const currentDocument = JSON.parse(currentDocumentJson);
+                        const currentFlags = JSON.parse(currentFlagsJson);
+                        
                         // Enum for flags
                         const ReplicatedDocumentFlag = {
                             DELETED: 'DELETED',
@@ -79,8 +94,8 @@ public struct ReplicatorHelper {
                 }
 
                 // Clear references
-                jsContext.setObject(nil, forKeyedSubscript: "currentDocument" as NSString)
-                jsContext.setObject(nil, forKeyedSubscript: "currentFlags" as NSString)
+                jsContext.setObject(nil, forKeyedSubscript: "currentDocumentJson" as NSString)
+                jsContext.setObject(nil, forKeyedSubscript: "currentFlagsJson" as NSString)
                 jsContext.setObject(nil, forKeyedSubscript: "filterFunctionString" as NSString)
                 
                 // Convert result to boolean

@@ -220,7 +220,7 @@ public struct CollectionDocumentResult {
     let concurrencyControl: Bool?
 }
 
-public enum CollectionError: Error {
+public enum CollectionError: Error, LocalizedError {
     case unableToFindCollection(collectionName: String, scopeName: String, databaseName: String)
     case getCollection(message: String, collectionName: String, scopeName: String, databaseName: String)
     case cannotCreateIndex(indexName: String)
@@ -229,6 +229,27 @@ public enum CollectionError: Error {
     case documentError(message: String, collectionName: String, scopeName: String, databaseName: String)
     case randomError(message: String, collectionName: String, scopeName: String, databaseName: String)
     case databaseNotOpen(name: String)
+    
+    public var errorDescription: String? {
+        switch self {
+        case .unableToFindCollection(let collectionName, let scopeName, let databaseName):
+            return "Unable to find collection '\(collectionName)' in scope '\(scopeName)' of database '\(databaseName)'"
+        case .getCollection(let message, let collectionName, let scopeName, let databaseName):
+            return "Error getting collection '\(collectionName)' in scope '\(scopeName)' of database '\(databaseName)': \(message)"
+        case .cannotCreateIndex(let indexName):
+            return "Cannot create index '\(indexName)'"
+        case .createIndex(let indexName, let message):
+            return "Error creating index '\(indexName)': \(message)"
+        case .unknownIndexType(let indexType):
+            return "Unknown index type: '\(indexType)'"
+        case .documentError(let message, let collectionName, let scopeName, let databaseName):
+            return "Document error in collection '\(collectionName)' (scope: '\(scopeName)', database: '\(databaseName)'): \(message)"
+        case .randomError(let message, let collectionName, let scopeName, let databaseName):
+            return "Error in collection '\(collectionName)' (scope: '\(scopeName)', database: '\(databaseName)'): \(message)"
+        case .databaseNotOpen(let name):
+            return "Database '\(name)' is not open"
+        }
+    }
 }
 
 public class CollectionManager {

@@ -6,12 +6,27 @@
 import Foundation
 import CouchbaseLiteSwift
 
-enum ReplicatorError: Error {
+enum ReplicatorError: Error, LocalizedError {
     case configurationError(message: String)
     case unableToFindReplicator(replicatorId: String)
     case unknownError(message: String)
     case fatalError(message: String)
     case invalidState(message: String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .configurationError(let message):
+            return "Replicator configuration error: \(message)"
+        case .unableToFindReplicator(let replicatorId):
+            return "Unable to find replicator with ID: \(replicatorId)"
+        case .unknownError(let message):
+            return "Replicator error: \(message)"
+        case .fatalError(let message):
+            return "Fatal replicator error: \(message)"
+        case .invalidState(let message):
+            return "Invalid replicator state: \(message)"
+        }
+    }
 }
 
 public class ReplicatorManager {
