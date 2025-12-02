@@ -72,7 +72,7 @@ public class LogSinksManager {
         
         // Convert maxFileSize from Any? to Int64 (defaults to 512 KB)
         let maxFileSize: Int64
-        if let sizeNum = config["maxSize"] as? NSNumber {
+        if let sizeNum = config["maxFileSize"] as? NSNumber {
             maxFileSize = sizeNum.int64Value
         } else {
             maxFileSize = 524288  // 512 KB default
@@ -80,7 +80,7 @@ public class LogSinksManager {
         
         // Convert maxRotateCount from Any? to Int32 (defaults to 2)
         let maxKeptFiles: Int32
-        if let countNum = config["maxRotateCount"] as? NSNumber {
+        if let countNum = config["maxKeptFiles"] as? NSNumber {
             maxKeptFiles = countNum.int32Value
         } else {
             maxKeptFiles = 2  // default
