@@ -67,32 +67,24 @@ public class LogSinksManager {
         let logLevel = try convertLogLevel(level)
         let cleanDir = directory.replacingOccurrences(of: "file://", with: "")
 
-        // Use provided values or the default values
         let usePlainText = config["usePlaintext"] as? Bool ?? false
-        
-        // Convert maxFileSize from Any? to Int64 (defaults to 512 KB)
-        let maxFileSize: Int64
-        if let sizeNum = config["maxFileSize"] as? NSNumber {
-            maxFileSize = sizeNum.int64Value
-        } else {
-            maxFileSize = 524288  // 512 KB default
-        }
-        
-        // Convert maxRotateCount from Any? to Int32 (defaults to 2)
-        let maxKeptFiles: Int32
-        if let countNum = config["maxKeptFiles"] as? NSNumber {
-            maxKeptFiles = countNum.int32Value
-        } else {
-            maxKeptFiles = 2  // default
-        }
+        // Only pass maxFileSize/maxKeptFiles if user provides them; CBL handles defaults internally
+        let maxFileSize = (config["maxFileSize"] as? NSNumber)?.int64Value
+        let maxKeptFiles = (config["maxKeptFiles"] as? NSNumber)?.int32Value
 
-        LogSinks.file = FileLogSink(
-            level: logLevel,
-            directory: cleanDir,
-            usePlainText: usePlainText,
-            maxKeptFiles: maxKeptFiles,
-            maxFileSize: maxFileSize
-        )
+        // Use initializer that lets CBL apply its internal defaults for optional params
+        if let maxFileSize = maxFileSize, let maxKeptFiles = maxKeptFiles {
+            LogSinks.file = FileLogSink(
+                level: logLevel,
+                directory: cleanDir,
+                usePlainText: usePlainText,
+                maxKeptFiles: maxKeptFiles,
+                maxFileSize: maxFileSize
+            )
+        } else {
+            // Let CBL use its defaults - create with minimal params
+            LogSinks.file = FileLogSink(level: logLevel, directory: cleanDir)
+        }
     }
 
 
