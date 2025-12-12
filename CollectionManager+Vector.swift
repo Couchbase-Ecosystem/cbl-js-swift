@@ -42,7 +42,7 @@ extension CollectionManager {
         }
         
         // Create vector index configuration
-        let vectorConfig = VectorIndexConfiguration(
+        var vectorConfig = VectorIndexConfiguration(
             expression: expression,
             dimensions: dimensions,
             centroids: centroids
