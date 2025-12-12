@@ -185,7 +185,7 @@ public class CollectionManager {
                     throw CollectionError.cannotCreateIndex(indexName: indexName)
                 }
                 
-                let vectorConfig = VectorIndexConfiguration(
+                var vectorConfig = VectorIndexConfiguration(
                     expression: expression,
                     dimensions: dimensions,
                     centroids: centroids
