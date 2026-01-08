@@ -149,6 +149,7 @@ public class CollectionManager {
     public func createIndex(_ indexName: String,
                             indexType: String,
                             items: [[Any]],
+                            indexConfig: [String: Any]? = nil,
                             collectionName: String,
                             scopeName: String,
                             databaseName: String) throws {
@@ -160,20 +161,89 @@ public class CollectionManager {
             throw CollectionError.unableToFindCollection(collectionName: collectionName, scopeName: scopeName, databaseName: databaseName)
         }
         
-        let index: Index
         switch indexType {
             case "value":
-                index = IndexBuilder.valueIndex(items: IndexHelper.makeValueIndexItems(items))
+                let index = IndexBuilder.valueIndex(items: IndexHelper.makeValueIndexItems(items))
+                do {
+                    try collection.createIndex(index, name: indexName)
+                } catch {
+                    throw CollectionError.createIndex(indexName: indexName, message: error.localizedDescription)
+                }
             case "full-text":
-                index = IndexBuilder.fullTextIndex(items: IndexHelper.makeFullTextIndexItems(items))
+                let index = IndexBuilder.fullTextIndex(items: IndexHelper.makeFullTextIndexItems(items))
+                do {
+                    try collection.createIndex(index, name: indexName)
+                } catch {
+                    throw CollectionError.createIndex(indexName: indexName, message: error.localizedDescription)
+                }
+            case "vector":
+                // Vector index support for APPROX_VECTOR_DISTANCE queries
+                guard let config = indexConfig,
+                      let expression = config["expression"] as? String,
+                      let dimensions = config["dimensions"] as? UInt32,
+                      let centroids = config["centroids"] as? UInt32 else {
+                    throw CollectionError.cannotCreateIndex(indexName: indexName)
+                }
+                
+                var vectorConfig = VectorIndexConfiguration(
+                    expression: expression,
+                    dimensions: dimensions,
+                    centroids: centroids
+                )
+                
+                // Set distance metric
+                if let metricStr = config["metric"] as? String {
+                    switch metricStr {
+                    case "cosine":
+                        vectorConfig.metric = .cosine
+                    case "euclidean":
+                        vectorConfig.metric = .euclidean
+                    case "euclideanSquared":
+                        vectorConfig.metric = .euclideanSquared
+                    default:
+                        vectorConfig.metric = .euclideanSquared
+                    }
+                }
+                
+                // Set encoding
+                if let encodingDict = config["encoding"] as? [String: Any],
+                   let encodingType = encodingDict["type"] as? String {
+                    switch encodingType {
+                    case "none":
+                        vectorConfig.encoding = .none
+                    case "SQ":
+                        vectorConfig.encoding = .scalarQuantizer(type: .SQ8)
+                    case "PQ":
+                        if let subquantizers = encodingDict["subquantizers"] as? UInt32,
+                           let bits = encodingDict["bits"] as? UInt32 {
+                            vectorConfig.encoding = .productQuantizer(subquantizers: subquantizers, bits: bits)
+                        }
+                    default:
+                        vectorConfig.encoding = .none
+                    }
+                }
+                
+                // Set optional parameters
+                if let minTraining = config["minTrainingSize"] as? UInt32, minTraining > 0 {
+                    vectorConfig.minTrainingSize = minTraining
+                }
+                if let maxTraining = config["maxTrainingSize"] as? UInt32, maxTraining > 0 {
+                    vectorConfig.maxTrainingSize = maxTraining
+                }
+                if let numProbes = config["numProbes"] as? UInt32, numProbes > 0 {
+                    vectorConfig.numProbes = numProbes
+                }
+                if let isLazy = config["isLazy"] as? Bool {
+                    vectorConfig.isLazy = isLazy
+                }
+                
+                do {
+                    try collection.createIndex(withName: indexName, config: vectorConfig)
+                } catch {
+                    throw CollectionError.createIndex(indexName: indexName, message: error.localizedDescription)
+                }
             default:
                 throw CollectionError.unknownIndexType(indexType: indexType)
-        }
-        
-        do {
-            try collection.createIndex(index, name: indexName)
-        } catch {
-            throw CollectionError.createIndex(indexName: indexName, message: error.localizedDescription)
         }
     }
     
